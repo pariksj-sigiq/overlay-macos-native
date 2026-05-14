@@ -13,6 +13,7 @@ import AppKit
 import Combine
 import SwiftUI
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Owned objects
@@ -45,20 +46,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // 1. Build the overlay window.
         let window = OverlayWindow()
         self.overlayWindow = window
+        CallSessionStore.shared.setExcludedWindowIDs([CGWindowID(window.windowNumber)])
         window.makeKeyAndOrderFront(nil)
+
+        Task {
+            try? await ProviderRegistry.shared.reload()
+        }
 
         // 2. Global hotkeys (⌘⇧\ toggle, font size, opacity, etc.).
         //    HotkeyManager is implemented by another agent and requires a
         //    toggleVisibility closure in its initializer.
-        self.hotkeyManager = HotkeyManager(toggleVisibility: { [weak self] in
-            self?.toggleOverlayVisibility()
-        })
+        self.hotkeyManager = HotkeyManager(
+            toggleVisibility: { [weak self] in self?.toggleOverlayVisibility() },
+            toggleRecording: { CallSessionStore.shared.toggleRecording() },
+            manualAsk: { [weak self] in
+                self?.showOverlay()
+                AppCommandStore.shared.focusSuggestionPrompt()
+            },
+            regenerate: { CallSessionStore.shared.regenerateLast() },
+            jumpSuggestions: { [weak self] in
+                self?.showOverlay()
+                AppCommandStore.shared.selectedTab = .suggestions
+            },
+            jumpBrief: { [weak self] in
+                self?.showOverlay()
+                AppCommandStore.shared.selectedTab = .brief
+            }
+        )
 
         // 3. Menu-bar icon (show/hide, pin, quit). Implemented by another
         //    agent; same toggle closure pattern as HotkeyManager.
-        self.statusBarController = StatusBarController(toggleVisibility: { [weak self] in
-            self?.toggleOverlayVisibility()
-        })
+        self.statusBarController = StatusBarController(
+            toggleVisibility: { [weak self] in self?.toggleOverlayVisibility() },
+            startStopCall: { CallSessionStore.shared.toggleRecording() }
+        )
 
         // 4. Observe PinState changes from the menu / hotkey and reflect on
         //    the window level.
@@ -89,8 +110,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if window.isVisible {
             window.orderOut(nil)
         } else {
-            window.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
+            showOverlay()
         }
+    }
+
+    private func showOverlay() {
+        guard let window = overlayWindow else { return }
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 }

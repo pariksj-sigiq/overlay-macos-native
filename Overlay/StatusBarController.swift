@@ -5,21 +5,26 @@ import Foundation
 ///
 /// Keep a strong reference to an instance of this class for the lifetime of the app;
 /// releasing it removes the icon from the menu bar.
+@MainActor
 final class StatusBarController: NSObject, NSMenuDelegate {
 
     // MARK: - State
 
     private let statusItem: NSStatusItem
     private let toggleVisibility: () -> Void
+    private let startStopCall: () -> Void
 
     private var pinMenuItem: NSMenuItem?
     private var markdownMenuItem: NSMenuItem?
+    private var startStopMenuItem: NSMenuItem?
     private var focusModeItems: [FocusMode: NSMenuItem] = [:]
 
     // MARK: - Init
 
-    init(toggleVisibility: @escaping () -> Void) {
+    init(toggleVisibility: @escaping () -> Void,
+         startStopCall: @escaping () -> Void = {}) {
         self.toggleVisibility = toggleVisibility
+        self.startStopCall = startStopCall
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         super.init()
 
@@ -57,6 +62,18 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         toggleItem.target = self
         toggleItem.keyEquivalentModifierMask = [.command, .shift]
         menu.addItem(toggleItem)
+
+        menu.addItem(.separator())
+
+        let startStopItem = NSMenuItem(
+            title: "Start/Stop Call",
+            action: #selector(startStopCallAction(_:)),
+            keyEquivalent: "r"
+        )
+        startStopItem.target = self
+        startStopItem.keyEquivalentModifierMask = [.command, .shift]
+        menu.addItem(startStopItem)
+        self.startStopMenuItem = startStopItem
 
         menu.addItem(.separator())
 
@@ -135,6 +152,7 @@ final class StatusBarController: NSObject, NSMenuDelegate {
     func menuWillOpen(_ menu: NSMenu) {
         pinMenuItem?.state = PinState.shared.isPinned ? .on : .off
         markdownMenuItem?.state = UserDefaults.standard.bool(forKey: "overlay.markdownRender") ? .on : .off
+        startStopMenuItem?.title = CallSessionStore.shared.isRecording ? "Stop Call Recording" : "Start Call Recording"
         let current = FocusModeStore.shared.mode
         for (mode, item) in focusModeItems {
             item.state = (mode == current) ? .on : .off
@@ -145,6 +163,10 @@ final class StatusBarController: NSObject, NSMenuDelegate {
 
     @objc private func toggleOverlayAction(_ sender: NSMenuItem) {
         toggleVisibility()
+    }
+
+    @objc private func startStopCallAction(_ sender: NSMenuItem) {
+        startStopCall()
     }
 
     @objc private func togglePinAction(_ sender: NSMenuItem) {
