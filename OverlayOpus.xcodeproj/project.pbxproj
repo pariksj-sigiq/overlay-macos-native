@@ -19,6 +19,40 @@
 		A1000010000000000000011 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = A1000020000000000000011 /* AppIcon.icns */; };
 		A1000010000000000000012 /* FocusMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000020000000000000012 /* FocusMode.swift */; };
 		A1000010000000000000013 /* MarkdownView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000020000000000000013 /* MarkdownView.swift */; };
+		B1000010000000000000001 /* AppDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000001 /* AppDatabase.swift */; };
+		B1000010000000000000002 /* Migrations.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000002 /* Migrations.swift */; };
+		B1000010000000000000003 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000003 /* Models.swift */; };
+		B1000010000000000000004 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000004 /* KeychainStore.swift */; };
+		B1000010000000000000005 /* LLMProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000005 /* LLMProvider.swift */; };
+		B1000010000000000000006 /* ProviderRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000006 /* ProviderRegistry.swift */; };
+		B1000010000000000000007 /* AzureOpenAIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000007 /* AzureOpenAIProvider.swift */; };
+		B1000010000000000000008 /* BedrockProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000008 /* BedrockProvider.swift */; };
+		B1000010000000000000009 /* OllamaProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000009 /* OllamaProvider.swift */; };
+		B1000010000000000000010 /* OpenAIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000010 /* OpenAIProvider.swift */; };
+		B1000010000000000000011 /* SigV4.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000011 /* SigV4.swift */; };
+		B1000010000000000000012 /* SSEParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000012 /* SSEParser.swift */; };
+		B1000010000000000000013 /* AudioRingBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000013 /* AudioRingBuffer.swift */; };
+		B1000010000000000000014 /* SystemAudioCapturer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000014 /* SystemAudioCapturer.swift */; };
+		B1000010000000000000015 /* WhisperEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000015 /* WhisperEngine.swift */; };
+		B1000010000000000000016 /* WhisperModelManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000016 /* WhisperModelManager.swift */; };
+		B1000010000000000000017 /* QuestionDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000017 /* QuestionDetector.swift */; };
+		B1000010000000000000018 /* SuggestionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000018 /* SuggestionEngine.swift */; };
+		B1000010000000000000019 /* PromptBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000019 /* PromptBuilder.swift */; };
+		B1000010000000000000020 /* DocumentIngestor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000020 /* DocumentIngestor.swift */; };
+		B1000010000000000000021 /* DocxParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000021 /* DocxParser.swift */; };
+		B1000010000000000000022 /* PdfParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000022 /* PdfParser.swift */; };
+		B1000010000000000000023 /* CallSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000023 /* CallSessionStore.swift */; };
+		B1000010000000000000024 /* RootTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000024 /* RootTabView.swift */; };
+		B1000010000000000000025 /* NotesTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000025 /* NotesTab.swift */; };
+		B1000010000000000000026 /* BriefTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000026 /* BriefTab.swift */; };
+		B1000010000000000000027 /* LiveTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000027 /* LiveTab.swift */; };
+		B1000010000000000000028 /* SuggestionsTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000028 /* SuggestionsTab.swift */; };
+		B1000010000000000000029 /* HistoryTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000029 /* HistoryTab.swift */; };
+		B1000010000000000000030 /* SettingsTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000030 /* SettingsTab.swift */; };
+		B1000010000000000000031 /* ProviderEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000031 /* ProviderEditorView.swift */; };
+		B1000010000000000000032 /* DropZoneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000032 /* DropZoneView.swift */; };
+		B1000010000000000000101 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = C1000110000000000000001 /* GRDB */; };
+		B1000010000000000000102 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = C1000110000000000000002 /* ZIPFoundation */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,6 +70,39 @@
 		A1000020000000000000011 /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
 		A1000020000000000000012 /* FocusMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusMode.swift; sourceTree = "<group>"; };
 		A1000020000000000000013 /* MarkdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownView.swift; sourceTree = "<group>"; };
+		B1000020000000000000001 /* AppDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDatabase.swift; sourceTree = "<group>"; };
+		B1000020000000000000002 /* Migrations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Migrations.swift; sourceTree = "<group>"; };
+		B1000020000000000000003 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		B1000020000000000000004 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
+		B1000020000000000000005 /* LLMProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMProvider.swift; sourceTree = "<group>"; };
+		B1000020000000000000006 /* ProviderRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderRegistry.swift; sourceTree = "<group>"; };
+		B1000020000000000000007 /* AzureOpenAIProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AzureOpenAIProvider.swift; sourceTree = "<group>"; };
+		B1000020000000000000008 /* BedrockProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockProvider.swift; sourceTree = "<group>"; };
+		B1000020000000000000009 /* OllamaProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaProvider.swift; sourceTree = "<group>"; };
+		B1000020000000000000010 /* OpenAIProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIProvider.swift; sourceTree = "<group>"; };
+		B1000020000000000000011 /* SigV4.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SigV4.swift; sourceTree = "<group>"; };
+		B1000020000000000000012 /* SSEParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSEParser.swift; sourceTree = "<group>"; };
+		B1000020000000000000013 /* AudioRingBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRingBuffer.swift; sourceTree = "<group>"; };
+		B1000020000000000000014 /* SystemAudioCapturer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemAudioCapturer.swift; sourceTree = "<group>"; };
+		B1000020000000000000015 /* WhisperEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperEngine.swift; sourceTree = "<group>"; };
+		B1000020000000000000016 /* WhisperModelManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhisperModelManager.swift; sourceTree = "<group>"; };
+		B1000020000000000000017 /* QuestionDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestionDetector.swift; sourceTree = "<group>"; };
+		B1000020000000000000018 /* SuggestionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuggestionEngine.swift; sourceTree = "<group>"; };
+		B1000020000000000000019 /* PromptBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptBuilder.swift; sourceTree = "<group>"; };
+		B1000020000000000000020 /* DocumentIngestor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentIngestor.swift; sourceTree = "<group>"; };
+		B1000020000000000000021 /* DocxParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocxParser.swift; sourceTree = "<group>"; };
+		B1000020000000000000022 /* PdfParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PdfParser.swift; sourceTree = "<group>"; };
+		B1000020000000000000023 /* CallSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallSessionStore.swift; sourceTree = "<group>"; };
+		B1000020000000000000024 /* RootTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootTabView.swift; sourceTree = "<group>"; };
+		B1000020000000000000025 /* NotesTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesTab.swift; sourceTree = "<group>"; };
+		B1000020000000000000026 /* BriefTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BriefTab.swift; sourceTree = "<group>"; };
+		B1000020000000000000027 /* LiveTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveTab.swift; sourceTree = "<group>"; };
+		B1000020000000000000028 /* SuggestionsTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SuggestionsTab.swift; sourceTree = "<group>"; };
+		B1000020000000000000029 /* HistoryTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryTab.swift; sourceTree = "<group>"; };
+		B1000020000000000000030 /* SettingsTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsTab.swift; sourceTree = "<group>"; };
+		B1000020000000000000031 /* ProviderEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderEditorView.swift; sourceTree = "<group>"; };
+		B1000020000000000000032 /* DropZoneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DropZoneView.swift; sourceTree = "<group>"; };
+		B1000020000000000000100 /* Overlay.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Overlay.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -43,6 +110,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B1000010000000000000101 /* GRDB in Frameworks */,
+				B1000010000000000000102 /* ZIPFoundation in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -71,8 +140,18 @@
 				A1000020000000000000009 /* PinState.swift */,
 				A1000020000000000000012 /* FocusMode.swift */,
 				A1000020000000000000013 /* MarkdownView.swift */,
+				B1000050000000000000004 /* Database */,
+				B1000050000000000000005 /* Storage */,
+				B1000050000000000000006 /* Providers */,
+				B1000050000000000000007 /* Audio */,
+				B1000050000000000000008 /* Speech */,
+				B1000050000000000000009 /* Intelligence */,
+				B1000050000000000000010 /* Ingest */,
+				B1000050000000000000011 /* Session */,
+				B1000050000000000000012 /* UI */,
 				A1000020000000000000011 /* AppIcon.icns */,
 				A1000020000000000000010 /* Info.plist */,
+				B1000020000000000000100 /* Overlay.entitlements */,
 			);
 			path = Overlay;
 			sourceTree = "<group>";
@@ -83,6 +162,101 @@
 				A1000030000000000000001 /* OverlayOpus.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		B1000050000000000000004 /* Database */ = {
+			isa = PBXGroup;
+			children = (
+				B1000020000000000000001 /* AppDatabase.swift */,
+				B1000020000000000000002 /* Migrations.swift */,
+				B1000020000000000000003 /* Models.swift */,
+			);
+			path = Database;
+			sourceTree = "<group>";
+		};
+		B1000050000000000000005 /* Storage */ = {
+			isa = PBXGroup;
+			children = (
+				B1000020000000000000004 /* KeychainStore.swift */,
+			);
+			path = Storage;
+			sourceTree = "<group>";
+		};
+		B1000050000000000000006 /* Providers */ = {
+			isa = PBXGroup;
+			children = (
+				B1000020000000000000005 /* LLMProvider.swift */,
+				B1000020000000000000006 /* ProviderRegistry.swift */,
+				B1000020000000000000007 /* AzureOpenAIProvider.swift */,
+				B1000020000000000000008 /* BedrockProvider.swift */,
+				B1000020000000000000009 /* OllamaProvider.swift */,
+				B1000020000000000000010 /* OpenAIProvider.swift */,
+				B1000020000000000000011 /* SigV4.swift */,
+				B1000020000000000000012 /* SSEParser.swift */,
+			);
+			path = Providers;
+			sourceTree = "<group>";
+		};
+		B1000050000000000000007 /* Audio */ = {
+			isa = PBXGroup;
+			children = (
+				B1000020000000000000013 /* AudioRingBuffer.swift */,
+				B1000020000000000000014 /* SystemAudioCapturer.swift */,
+			);
+			path = Audio;
+			sourceTree = "<group>";
+		};
+		B1000050000000000000008 /* Speech */ = {
+			isa = PBXGroup;
+			children = (
+				B1000020000000000000015 /* WhisperEngine.swift */,
+				B1000020000000000000016 /* WhisperModelManager.swift */,
+			);
+			path = Speech;
+			sourceTree = "<group>";
+		};
+		B1000050000000000000009 /* Intelligence */ = {
+			isa = PBXGroup;
+			children = (
+				B1000020000000000000017 /* QuestionDetector.swift */,
+				B1000020000000000000018 /* SuggestionEngine.swift */,
+				B1000020000000000000019 /* PromptBuilder.swift */,
+			);
+			path = Intelligence;
+			sourceTree = "<group>";
+		};
+		B1000050000000000000010 /* Ingest */ = {
+			isa = PBXGroup;
+			children = (
+				B1000020000000000000020 /* DocumentIngestor.swift */,
+				B1000020000000000000021 /* DocxParser.swift */,
+				B1000020000000000000022 /* PdfParser.swift */,
+			);
+			path = Ingest;
+			sourceTree = "<group>";
+		};
+		B1000050000000000000011 /* Session */ = {
+			isa = PBXGroup;
+			children = (
+				B1000020000000000000023 /* CallSessionStore.swift */,
+			);
+			path = Session;
+			sourceTree = "<group>";
+		};
+		B1000050000000000000012 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				B1000020000000000000024 /* RootTabView.swift */,
+				B1000020000000000000025 /* NotesTab.swift */,
+				B1000020000000000000026 /* BriefTab.swift */,
+				B1000020000000000000027 /* LiveTab.swift */,
+				B1000020000000000000028 /* SuggestionsTab.swift */,
+				B1000020000000000000029 /* HistoryTab.swift */,
+				B1000020000000000000030 /* SettingsTab.swift */,
+				B1000020000000000000031 /* ProviderEditorView.swift */,
+				B1000020000000000000032 /* DropZoneView.swift */,
+			);
+			path = UI;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -101,6 +275,10 @@
 			dependencies = (
 			);
 			name = OverlayOpus;
+			packageProductDependencies = (
+				C1000110000000000000001 /* GRDB */,
+				C1000110000000000000002 /* ZIPFoundation */,
+			);
 			productName = OverlayOpus;
 			productReference = A1000030000000000000001 /* OverlayOpus.app */;
 			productType = "com.apple.product-type.application";
@@ -129,6 +307,10 @@
 				Base,
 			);
 			mainGroup = A1000050000000000000001;
+			packageReferences = (
+				C1000100000000000000001 /* XCRemoteSwiftPackageReference "GRDB.swift" */,
+				C1000100000000000000002 /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
+			);
 			productRefGroup = A1000050000000000000003 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -165,10 +347,74 @@
 				A1000010000000000000009 /* PinState.swift in Sources */,
 				A1000010000000000000012 /* FocusMode.swift in Sources */,
 				A1000010000000000000013 /* MarkdownView.swift in Sources */,
+				B1000010000000000000001 /* AppDatabase.swift in Sources */,
+				B1000010000000000000002 /* Migrations.swift in Sources */,
+				B1000010000000000000003 /* Models.swift in Sources */,
+				B1000010000000000000004 /* KeychainStore.swift in Sources */,
+				B1000010000000000000005 /* LLMProvider.swift in Sources */,
+				B1000010000000000000006 /* ProviderRegistry.swift in Sources */,
+				B1000010000000000000007 /* AzureOpenAIProvider.swift in Sources */,
+				B1000010000000000000008 /* BedrockProvider.swift in Sources */,
+				B1000010000000000000009 /* OllamaProvider.swift in Sources */,
+				B1000010000000000000010 /* OpenAIProvider.swift in Sources */,
+				B1000010000000000000011 /* SigV4.swift in Sources */,
+				B1000010000000000000012 /* SSEParser.swift in Sources */,
+				B1000010000000000000013 /* AudioRingBuffer.swift in Sources */,
+				B1000010000000000000014 /* SystemAudioCapturer.swift in Sources */,
+				B1000010000000000000015 /* WhisperEngine.swift in Sources */,
+				B1000010000000000000016 /* WhisperModelManager.swift in Sources */,
+				B1000010000000000000017 /* QuestionDetector.swift in Sources */,
+				B1000010000000000000018 /* SuggestionEngine.swift in Sources */,
+				B1000010000000000000019 /* PromptBuilder.swift in Sources */,
+				B1000010000000000000020 /* DocumentIngestor.swift in Sources */,
+				B1000010000000000000021 /* DocxParser.swift in Sources */,
+				B1000010000000000000022 /* PdfParser.swift in Sources */,
+				B1000010000000000000023 /* CallSessionStore.swift in Sources */,
+				B1000010000000000000024 /* RootTabView.swift in Sources */,
+				B1000010000000000000025 /* NotesTab.swift in Sources */,
+				B1000010000000000000026 /* BriefTab.swift in Sources */,
+				B1000010000000000000027 /* LiveTab.swift in Sources */,
+				B1000010000000000000028 /* SuggestionsTab.swift in Sources */,
+				B1000010000000000000029 /* HistoryTab.swift in Sources */,
+				B1000010000000000000030 /* SettingsTab.swift in Sources */,
+				B1000010000000000000031 /* ProviderEditorView.swift in Sources */,
+				B1000010000000000000032 /* DropZoneView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		C1000100000000000000001 /* XCRemoteSwiftPackageReference "GRDB.swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/groue/GRDB.swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 6.29.0;
+			};
+		};
+		C1000100000000000000002 /* XCRemoteSwiftPackageReference "ZIPFoundation" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/weichsel/ZIPFoundation";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.9.19;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		C1000110000000000000001 /* GRDB */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C1000100000000000000001 /* XCRemoteSwiftPackageReference "GRDB.swift" */;
+			productName = GRDB;
+		};
+		C1000110000000000000002 /* ZIPFoundation */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C1000100000000000000002 /* XCRemoteSwiftPackageReference "ZIPFoundation" */;
+			productName = ZIPFoundation;
+		};
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCBuildConfiguration section */
 		A1000110000000000000001 /* Debug */ = {
@@ -223,7 +469,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -279,7 +525,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
@@ -291,6 +537,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				CODE_SIGN_ENTITLEMENTS = Overlay/Overlay.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGN_IDENTITY = "-";
 				COMBINE_HIDPI_IMAGES = YES;
@@ -306,7 +553,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.pariksj.overlay-opus;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -319,6 +566,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				CODE_SIGN_ENTITLEMENTS = Overlay/Overlay.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CODE_SIGN_IDENTITY = "-";
 				COMBINE_HIDPI_IMAGES = YES;
@@ -334,7 +582,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.pariksj.overlay-opus;
 				PRODUCT_NAME = "$(TARGET_NAME)";

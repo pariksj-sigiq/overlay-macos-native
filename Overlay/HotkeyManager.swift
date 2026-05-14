@@ -46,6 +46,11 @@ final class HotkeyManager {
         case opacityDown      = 5
         case cycleFocusMode   = 6
         case toggleMarkdown   = 7
+        case toggleRecording  = 8
+        case manualAsk        = 9
+        case regenerate       = 10
+        case jumpSuggestions  = 11
+        case jumpBrief        = 12
     }
 
     /// Four-char code used as `EventHotKeyID.signature`. Carbon convention: a stable
@@ -66,13 +71,28 @@ final class HotkeyManager {
     // MARK: - Callbacks
 
     private let toggleVisibility: () -> Void
+    private let toggleRecording: () -> Void
+    private let manualAsk: () -> Void
+    private let regenerate: () -> Void
+    private let jumpSuggestions: () -> Void
+    private let jumpBrief: () -> Void
 
     // MARK: - Init / deinit
 
     /// - Parameter toggleVisibility: Invoked on the main thread when the user presses
     ///   the toggle-visibility hotkey (⌘⇧\).
-    init(toggleVisibility: @escaping () -> Void) {
+    init(toggleVisibility: @escaping () -> Void,
+         toggleRecording: @escaping () -> Void = {},
+         manualAsk: @escaping () -> Void = {},
+         regenerate: @escaping () -> Void = {},
+         jumpSuggestions: @escaping () -> Void = {},
+         jumpBrief: @escaping () -> Void = {}) {
         self.toggleVisibility = toggleVisibility
+        self.toggleRecording = toggleRecording
+        self.manualAsk = manualAsk
+        self.regenerate = regenerate
+        self.jumpSuggestions = jumpSuggestions
+        self.jumpBrief = jumpBrief
         _ = FocusModeStore.shared  // prime singleton
         _ = NotesStore.shared
         seedDefaultsIfNeeded()
@@ -166,6 +186,16 @@ final class HotkeyManager {
         register(keyCode: UInt32(kVK_ANSI_L),             modifiers: shiftCmd, id: .cycleFocusMode)
         // ⌘⇧M  — toggle markdown rendering
         register(keyCode: UInt32(kVK_ANSI_M),             modifiers: shiftCmd, id: .toggleMarkdown)
+        // ⌘⇧R  — start/stop call recording
+        register(keyCode: UInt32(kVK_ANSI_R),             modifiers: shiftCmd, id: .toggleRecording)
+        // ⌘⇧A  — focus manual ask prompt
+        register(keyCode: UInt32(kVK_ANSI_A),             modifiers: shiftCmd, id: .manualAsk)
+        // ⌘⇧Q  — regenerate last suggestion
+        register(keyCode: UInt32(kVK_ANSI_Q),             modifiers: shiftCmd, id: .regenerate)
+        // ⌘⇧T  — jump to Suggestions tab
+        register(keyCode: UInt32(kVK_ANSI_T),             modifiers: shiftCmd, id: .jumpSuggestions)
+        // ⌘⇧B  — jump to Brief tab
+        register(keyCode: UInt32(kVK_ANSI_B),             modifiers: shiftCmd, id: .jumpBrief)
     }
 
     private func register(keyCode: UInt32, modifiers: UInt32, id: HotkeyID) {
@@ -213,6 +243,16 @@ final class HotkeyManager {
                 let current = defaults.bool(forKey: "overlay.markdownRender")
                 defaults.set(!current, forKey: "overlay.markdownRender")
             }
+        case .toggleRecording:
+            work = { [weak self] in self?.toggleRecording() }
+        case .manualAsk:
+            work = { [weak self] in self?.manualAsk() }
+        case .regenerate:
+            work = { [weak self] in self?.regenerate() }
+        case .jumpSuggestions:
+            work = { [weak self] in self?.jumpSuggestions() }
+        case .jumpBrief:
+            work = { [weak self] in self?.jumpBrief() }
         }
 
         if Thread.isMainThread {

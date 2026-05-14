@@ -1,199 +1,190 @@
-# AGENTS.md — Handoff for next agent
+# AGENTS.md — Overlay-Opus Handoff
 
 Working dir: `/Users/pariksj/Desktop/overlay-opus/`
-Built app: `/Applications/OverlayOpus.app` + `/tmp/overlay-opus-build/Build/Products/Debug/OverlayOpus.app`
-Source dir: `Overlay/` (kept this name inside pbxproj; product name is `OverlayOpus`)
+Built app: `/tmp/overlay-opus-build/Build/Products/Debug/OverlayOpus.app`
+Project: `OverlayOpus.xcodeproj`
+Scheme/target: `OverlayOpus`
+Source dir: `Overlay/`
 
-## What this is
+## What This Is
 
-macOS SwiftUI menu-bar app. Translucent floating notes window **invisible to screen capture** (Zoom, Meet, Teams, QuickTime, OBS, ScreenCaptureKit, `screencapture`). User reads notes during meetings without viewers seeing them. Built from a sibling `overlay/` project via 4 parallel subagents, then branched to `overlay-opus/` with rename + feature additions.
+macOS SwiftUI/AppKit menu-bar app. The overlay window stays invisible to standard software capture while adding a scaffolded AI call assistant: brief/docs in, system audio capture in, local whisper path planned, question detection, provider-agnostic suggestions, and local SQLite history.
 
-## How invisibility works
+## Core Invisibility Rule
 
-Single flag: `NSWindow.sharingType = .none` in `OverlayWindow.swift:44`. Excludes window from `CGWindowList` and ScreenCaptureKit — every standard software capture path skips it. Physical display still shows it.
+Do not remove or weaken this line in `OverlayWindow.swift`:
 
-**Does NOT defeat:** phone camera at screen, HDMI hardware capture, a11y-based screen readers.
-
-## Target / toolchain
-
-- Swift 5.9, SwiftUI + AppKit, macOS 13+ deployment
-- Xcode 15, `objectVersion = 56`, ad-hoc codesign, **no sandbox** (global hotkeys need non-sandbox)
-- Bundle id `com.pariksj.overlay-opus`, display name `Overlay-Opus`, `LSUIElement = true` (menu bar only, no Dock)
-
-## Project layout
-
-```
-overlay-opus/
-├── OverlayOpus.xcodeproj/
-│   ├── project.pbxproj                     # target = OverlayOpus, source dir path still "Overlay"
-│   └── xcshareddata/xcschemes/OverlayOpus.xcscheme
-├── Overlay/                                # source dir (kept Overlay/ to avoid pbxproj path edits)
-│   ├── OverlayApp.swift                    # @main App, NSApplicationDelegateAdaptor, Settings scene only
-│   ├── AppDelegate.swift                   # owns OverlayWindow + HotkeyManager + StatusBarController
-│   ├── OverlayWindow.swift                 # NSWindow subclass. sharingType=.none, focus-mode application
-│   ├── VisualEffectBackground.swift        # NSViewRepresentable, NSVisualEffectView .hudWindow
-│   ├── ContentView.swift                   # toolbar + transparency bar + editor / markdown view
-│   ├── HotkeyManager.swift                 # Carbon RegisterEventHotKey (no a11y permission needed)
-│   ├── StatusBarController.swift           # NSStatusItem menu: Show/Hide, Pin, Quit
-│   ├── NotesStore.swift                    # ObservableObject, debounced autosave
-│   ├── PinState.swift                      # ObservableObject isPinned
-│   ├── FocusMode.swift                     # 4-mode enum + FocusModeStore singleton
-│   ├── MarkdownView.swift                  # line-by-line markdown renderer (no deps)
-│   ├── AppIcon.icns                        # glass-card + eye-slash icon, 10 sizes
-│   └── Info.plist                          # LSUIElement=true, CFBundleIconFile=AppIcon
-├── build.sh                                # xcodebuild Release wrapper
-├── README.md                               # user-facing docs
-└── AGENTS.md                               # this file
+```swift
+self.sharingType = .none
 ```
 
-## Singletons / cross-file API (DO NOT RENAME)
+It is the product. It excludes the window from standard capture paths. It does not defeat cameras, hardware capture, or accessibility readers.
 
-- `NotesStore.shared` — `@Published var text: String`, `func flush()`. Autosaves to `~/Library/Application Support/Overlay/notes.txt`, 0.5s debounce.
-- `PinState.shared` — `@Published var isPinned: Bool`, `.toggle()`. Observed by `OverlayWindow` → sets `.level = .floating | .normal`.
-- `FocusModeStore.shared` — `@Published var mode: FocusMode`, `.cycle()`. Persisted to `UserDefaults["overlay.focusMode"]`. Observed by `OverlayWindow` → applies `ignoresMouseEvents` + `canBecomeKey` gating.
+`SystemAudioCapturer` also uses `excludesCurrentProcessAudio = true`, and `AppDelegate` passes the overlay window id to the capturer.
 
-## UserDefaults keys
+## Target / Toolchain
 
-| Key | Type | Default | Source of truth |
-|---|---|---|---|
-| `overlay.fontSize`       | Double | 14   | `@AppStorage` in ContentView, hotkeys bump via `UserDefaults` |
-| `overlay.opacity`        | Double | 0.85 | `@AppStorage`, hotkeys bump |
-| `overlay.frame`          | [String: CGFloat] dict (x/y/w/h) | centered | `OverlayWindow` auto-persists |
-| `overlay.focusMode`      | String (FocusMode.rawValue) | `interactive` | `FocusModeStore` |
-| `overlay.markdownRender` | Bool | false | `@AppStorage` in ContentView, toggled via ⌘⇧M |
+- Swift 5.9
+- SwiftUI + AppKit hybrid
+- macOS 14.0+
+- Bundle id `com.pariksj.overlay-opus`
+- `LSUIElement = true`
+- Sandbox off
+- Hardened runtime on
+- Ad-hoc codesign
 
-## Hotkeys (Carbon, global, no a11y permission)
+## Modules
 
-Registered in `HotkeyManager.swift:148-162`. Modifier = `cmdKey | shiftKey`.
+```text
+Overlay/
+├── AppDelegate.swift
+├── OverlayWindow.swift
+├── HotkeyManager.swift
+├── StatusBarController.swift
+├── NotesStore.swift
+├── FocusMode.swift
+├── Database/
+│   ├── AppDatabase.swift
+│   ├── Migrations.swift
+│   └── Models.swift
+├── Storage/
+│   └── KeychainStore.swift
+├── Providers/
+│   ├── LLMProvider.swift
+│   ├── ProviderRegistry.swift
+│   ├── AzureOpenAIProvider.swift
+│   ├── BedrockProvider.swift
+│   ├── OllamaProvider.swift
+│   ├── OpenAIProvider.swift
+│   ├── SigV4.swift
+│   └── SSEParser.swift
+├── Audio/
+│   ├── AudioRingBuffer.swift
+│   └── SystemAudioCapturer.swift
+├── Speech/
+│   ├── WhisperEngine.swift
+│   └── WhisperModelManager.swift
+├── Intelligence/
+│   ├── QuestionDetector.swift
+│   ├── SuggestionEngine.swift
+│   └── PromptBuilder.swift
+├── Ingest/
+│   ├── DocumentIngestor.swift
+│   ├── DocxParser.swift
+│   └── PdfParser.swift
+├── Session/
+│   └── CallSessionStore.swift
+└── UI/
+    ├── RootTabView.swift
+    ├── NotesTab.swift
+    ├── BriefTab.swift
+    ├── LiveTab.swift
+    ├── SuggestionsTab.swift
+    ├── HistoryTab.swift
+    ├── SettingsTab.swift
+    ├── ProviderEditorView.swift
+    └── DropZoneView.swift
+```
 
-| Shortcut | ID | Effect |
+## Ownership Map
+
+- Window lifecycle/invisibility: `OverlayWindow.swift`, `AppDelegate.swift`
+- Hotkeys/menu: `HotkeyManager.swift`, `StatusBarController.swift`
+- Notes persistence: `NotesStore.swift`
+- DB schema and records: `Database/*`
+- Secrets: `Storage/KeychainStore.swift`
+- LLM API layer: `Providers/*`
+- ScreenCaptureKit audio: `Audio/*`
+- Local STT path: `Speech/*`
+- Questions/prompts/suggestions: `Intelligence/*`
+- File extraction: `Ingest/*`
+- Session orchestration: `Session/CallSessionStore.swift`
+- App shell: `UI/*`
+
+## DB Schema
+
+`AppDatabase` opens:
+
+`~/Library/Application Support/Overlay/db.sqlite`
+
+Tables:
+
+- `call_session`
+- `context_doc`
+- `transcript_chunk`
+- `suggestion`
+- `provider_config`
+- `transcript_fts`
+- `doc_fts`
+
+FTS triggers are in `Migrations.swift`.
+
+## Provider Notes
+
+Provider configs live in SQLite; secrets live in Keychain service `OverlayOpus`.
+
+Supported provider classes:
+
+- `AzureOpenAIProvider`
+- `BedrockProvider`
+- `OllamaProvider`
+- `OpenAIProvider`
+
+No Anthropic SDK. Bedrock uses local SigV4 and currently has a minimal response-stream placeholder.
+
+## Whisper Status
+
+`WhisperModelManager` downloads ggml models locally. `WhisperEngine` is a compile-safe local scaffold. Xcode could not consume `https://github.com/ggerganov/whisper.cpp` as SPM because the repo did not expose a root `Package.swift` to the resolver. Next real implementation step is to vendor/build a whisper.cpp xcframework and wire C symbols into `WhisperEngine`.
+
+Do not add cloud STT.
+
+## Hotkeys
+
+Registered in `HotkeyManager.swift` with `cmdKey | shiftKey`.
+
+| Shortcut | Effect |
+|---|---|
+| `⌘⇧\` | show/hide overlay |
+| `⌘⇧=` | font size up |
+| `⌘⇧-` | font size down |
+| `⌘⇧]` | opacity up |
+| `⌘⇧[` | opacity down |
+| `⌘⇧L` | cycle focus mode |
+| `⌘⇧M` | toggle markdown |
+| `⌘⇧R` | start/stop recording |
+| `⌘⇧A` | focus Suggestions prompt |
+| `⌘⇧Q` | regenerate last suggestion |
+| `⌘⇧T` | jump to Suggestions |
+| `⌘⇧B` | jump to Brief |
+
+## UserDefaults Keys
+
+| Key | Type | Purpose |
 |---|---|---|
-| ⌘⇧\ | toggleVisibility | show/hide via AppDelegate callback |
-| ⌘⇧= | fontSizeUp       | bump `overlay.fontSize` (clamp 10–28) |
-| ⌘⇧- | fontSizeDown     | decrement |
-| ⌘⇧] | opacityUp        | bump `overlay.opacity` (clamp 0.3–1.0, step 0.05) |
-| ⌘⇧[ | opacityDown      | decrement |
-| ⌘⇧L | cycleFocusMode   | `FocusModeStore.shared.cycle()` |
-| ⌘⇧M | toggleMarkdown   | flip `overlay.markdownRender` bool |
+| `overlay.fontSize` | Double | notes font size |
+| `overlay.opacity` | Double | HUD opacity |
+| `overlay.frame` | `[String: CGFloat]` | persisted window frame |
+| `overlay.focusMode` | String | focus/click-through mode |
+| `overlay.markdownRender` | Bool | notes markdown render toggle |
+| `overlay.selectedTab` | String | root tab selection |
 
-Notifications posted (for non-`@AppStorage` observers): `.overlayFontChanged`, `.overlayOpacityChanged`.
-
-## Focus modes
-
-`FocusMode` enum in `FocusMode.swift`:
-
-| Case | Window behavior | Use case |
-|---|---|---|
-| `.interactive`      | normal — click, drag, type | editing notes before meeting |
-| `.clickThroughAll`  | `ignoresMouseEvents = true`, `canBecomeKey = false` | full lockout during presentation |
-| `.clickThroughBody` | SwiftUI `.allowsHitTesting(false)` on editor/markdown only, toolbar live | read with quick controls |
-| `.neverFocus`       | clickable/draggable, `canBecomeKey = false` | drag allowed but typing goes to meeting app |
-
-Applied in `OverlayWindow.applyFocusMode(_:)`. Visual: badge in toolbar (`ContentView.modeBadge`) shows icon+shortLabel; window border tints to `modeBorderColor` (red/orange/yellow/gray).
-
-Settings popover: gear icon in toolbar opens `SettingsPopover` in `ContentView.swift` with radio-list of all 4 modes + descriptions.
-
-## Markdown rendering
-
-`MarkdownView.swift` — **no third-party deps**. Line-by-line block parser (`blocks` computed property) handles:
-- ATX headings `#`..`######`
-- Unordered list `- ` / `* ` / `+ ` with indent tracking
-- Ordered list `\d+\. `
-- Blockquote `> `
-- Fenced code `` ``` ``
-- HR `---` / `***` / `___`
-- Blank line as spacer
-
-Inline parsing delegated to `AttributedString(markdown:)` with `.inlineOnlyPreservingWhitespace` — gets bold/italic/code/links/strike for free.
-
-Toggled by `overlay.markdownRender` bool. When `true`, `ContentView` shows `MarkdownView(text:fontSize:)` instead of `TextEditor`.
-
-## Icon
-
-`AppIcon.icns`. Generated by `/tmp/gen_icon.swift` via Core Graphics:
-- Gradient indigo→teal squircle background
-- Semi-translucent glass card with gloss band
-- 4 white note lines (last one short)
-- Bottom-right dark circle badge with eye + diagonal slash (hints at "invisible")
-
-10 PNGs emitted to `/tmp/OverlayOpus.iconset/`, then `iconutil -c icns` → `.icns`. Wired via `CFBundleIconFile` + `CFBundleIconName = "AppIcon"` in Info.plist and PBXBuildFile/PBXFileReference entries in pbxproj.
-
-**To regenerate:** `swift /tmp/gen_icon.swift && iconutil -c icns /tmp/OverlayOpus.iconset -o Overlay/AppIcon.icns`
-
-## Build / run
+## Build / Run
 
 ```bash
-# Xcode
-open OverlayOpus.xcodeproj    # then ⌘R
-
-# CLI
-./build.sh                    # Release build
 xcodebuild -project OverlayOpus.xcodeproj -scheme OverlayOpus \
-  -configuration Debug -derivedDataPath /tmp/overlay-opus-build \
-  clean build
+  -configuration Debug -derivedDataPath /tmp/overlay-opus-build build
 
-# Install + launch
-rm -rf /Applications/OverlayOpus.app
-cp -R /tmp/overlay-opus-build/Build/Products/Debug/OverlayOpus.app /Applications/
-open /Applications/OverlayOpus.app
-
-# Kill
+open /tmp/overlay-opus-build/Build/Products/Debug/OverlayOpus.app
 pkill -f OverlayOpus
 ```
 
-After replacing in `/Applications`, Finder/Launchpad may show stale icon — `killall Finder` or `touch /Applications/OverlayOpus.app` + `lsregister -f`.
+The user prompt mentioned a scheme named `Overlay`, but the actual project currently has only `OverlayOpus`.
 
-## Gotchas / lessons learned
+## Gotchas
 
-1. **SourceKit phantom errors.** Editing Swift files without an indexed Xcode build produces dozens of "Cannot find type 'X' in scope" errors across files that actually DO see each other at build time. These are IDE-only noise. **Always verify with `xcodebuild`, not SourceKit diagnostics.** Build reliably succeeds with the phantom errors present.
-
-2. **`.interactive` name collision.** macOS 26 SwiftUI added a `Glass.interactive` symbol. When `FocusMode.swift` isn't yet in the index, `.interactive` resolved to `Glass.interactive` and gave `"Member 'interactive' expects argument of type 'Glass'"`. **Fix:** use fully qualified `FocusMode.interactive` in comparisons (see `ContentView.swift:27,169,175`).
-
-3. **Borderless window needs `canBecomeKey` override.** `NSWindow(styleMask: [.borderless])` refuses key/main status by default. Without `override var canBecomeKey: Bool { true }` the TextEditor never receives keystrokes. But — we conditionally return `false` for `.clickThroughAll` and `.neverFocus` modes so typing goes to the app below.
-
-4. **Carbon user-data lifetime.** `InstallEventHandler` receives `UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque())`. Cast back with `Unmanaged<HotkeyManager>.fromOpaque(userData).takeUnretainedValue()`. Manager must outlive the handler — AppDelegate retains it for app lifetime.
-
-5. **`isMovableByWindowBackground = true`** on the window means any empty drag space (the 22pt top strip in ContentView) lets user drag. Disable when `.clickThroughAll` is active.
-
-6. **`scrollContentBackground(.hidden)`** on TextEditor is required for the HUD material to show through. macOS 13+ API, matches deployment target.
-
-7. **LaunchServices caching.** After rebuild+reinstall, sometimes you need `lsregister -f -R -trusted /Applications/OverlayOpus.app` or `killall Finder` to pick up changes.
-
-8. **Renaming the project.** `overlay-opus/` was copied from sibling `overlay/`. Renamed `Overlay.xcodeproj` → `OverlayOpus.xcodeproj`, target `Overlay` → `OverlayOpus`, scheme `Overlay.xcscheme` → `OverlayOpus.xcscheme`, bundle `com.pariksj.overlay` → `com.pariksj.overlay-opus`, `Overlay.app` → `OverlayOpus.app`, Info.plist `CFBundleDisplayName = "Overlay-Opus"`. **Kept source dir `Overlay/` as-is** — pbxproj `path = Overlay;` on the source group wasn't changed, avoiding cascading path edits. Any new Swift files should land in `Overlay/`.
-
-9. **Build-dir drift.** The `cd` command doesn't persist between Bash tool calls; always use absolute paths for `xcodebuild -project` etc.
-
-10. **`@main` + top-level code.** `OverlayApp.swift` can't contain any top-level statements if using `@main`. Keep it to struct-only.
-
-## Known limitations
-
-- App is unsigned (`Sign to Run Locally`, ad-hoc). First launch may require right-click → Open if downloaded, fine for local use.
-- No customizable hotkey bindings yet — all fixed strings.
-- Markdown renderer is custom; doesn't handle tables, footnotes, or nested code fences. Inline markdown (bold/italic/code/links) via `AttributedString` is the only thing we outsource.
-- No iCloud sync, no multi-document. Single notes.txt.
-
-## Good next steps (if user asks)
-
-- **Tables** in MarkdownView (pipe-parse `| a | b |`).
-- **Search** in notes (⌘F overlay with highlight).
-- **Multiple notes** — tab/slash commands to switch files in `~/Library/Application Support/Overlay/`.
-- **Custom hotkey rebinding** — swap Carbon constants for a preferences sheet.
-- **Real code signing** if user wants to share the app.
-- **Dock icon option** — flip `LSUIElement = false` behind a hidden flag so it can be toggled without a rebuild.
-- **Restore focus mode on show** — currently toggling visibility doesn't re-apply focus mode; check if needed.
-- **Accessibility polish** — the window title is "Overlay" (stale), update to "Overlay-Opus" for VoiceOver.
-
-## Test meet-invisibility
-
-```
-# Start QuickTime screen recording preview:
-open -a "QuickTime Player"   # File → New Screen Recording
-# or Meet share-screen preview in browser.
-# OverlayOpus window must NOT appear in the capture.
-```
-
-## Files the user has touched by name
-
-- Prompt for codex (initial scaffolding request) — not in repo
-- `overlay/` — original build from 4 parallel agents
-- `overlay-opus/` — this project, branched + renamed + focus-mode + markdown + custom icon
+1. `sharingType = .none` can make visual screenshot-based smoke tests misleading because the overlay intentionally disappears from screenshots.
+2. ScreenCaptureKit permission is Screen/System Audio Recording. The Info.plist key is not what drives the prompt.
+3. Keep disk I/O off main where possible. `NotesStore` still uses its existing path and behavior.
+4. Do not reintroduce `NotificationCenter` for new app data flow. Existing font/opacity notifications are legacy hotkey glue.
+5. The root shell is `RootTabView`; `ContentView` remains for legacy/reference but `OverlayWindow` now hosts `RootTabView`.
+6. GRDB and ZIPFoundation are Xcode SPM dependencies. whisper.cpp is not wired as SPM because upstream resolution failed.

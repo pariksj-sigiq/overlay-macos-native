@@ -162,9 +162,7 @@ final class OverlayWindow: NSWindow {
     // MARK: - Hosting
 
     private func installHostingView() {
-        // `ContentView` lives in a sibling file (another agent). It reads
-        // `NotesStore.shared` and `PinState.shared` directly.
-        let root = ContentView()
+        let root = RootTabView()
             .environmentObject(NotesStore.shared)
             .environmentObject(PinState.shared)
 
