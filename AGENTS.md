@@ -8,7 +8,7 @@ Source dir: `Overlay/`
 
 ## What This Is
 
-macOS SwiftUI/AppKit menu-bar app. The overlay window stays invisible to standard software capture while adding a scaffolded AI call assistant: brief/docs in, system audio capture in, local whisper path planned, question detection, provider-agnostic suggestions, and local SQLite history.
+macOS SwiftUI/AppKit menu-bar app. The overlay window stays invisible to standard software capture while adding an AI call assistant: brief/docs in, system audio capture in, local whisper.cpp runtime out, question detection, provider-agnostic suggestions, and local SQLite history.
 
 ## Core Invisibility Rule
 
@@ -130,11 +130,13 @@ Supported provider classes:
 - `OllamaProvider`
 - `OpenAIProvider`
 
-No Anthropic SDK. Bedrock uses local SigV4 and currently has a minimal response-stream placeholder.
+No Anthropic SDK. Bedrock uses local SigV4 and a minimal Amazon EventStream parser for Claude-style content deltas plus common Llama/Meta generation fields. Bedrock model listing is not implemented; users enter the model id manually.
 
 ## Whisper Status
 
-`WhisperModelManager` downloads ggml models locally. `WhisperEngine` is a compile-safe local scaffold. Xcode could not consume `https://github.com/ggerganov/whisper.cpp` as SPM because the repo did not expose a root `Package.swift` to the resolver. Next real implementation step is to vendor/build a whisper.cpp xcframework and wire C symbols into `WhisperEngine`.
+`WhisperModelManager` downloads ggml models locally. `WhisperEngine` now requires an installed local whisper.cpp command-line runtime and emits real transcript chunks through that runtime. Xcode could not consume `https://github.com/ggerganov/whisper.cpp` as SPM because the repo did not expose a root `Package.swift` to the resolver.
+
+Runtime lookup checks `whisper-cli`, `whisper-cpp`, or `main` in `/usr/local/bin`, `/opt/homebrew/bin`, `~/Library/Application Support/Overlay/whisper/`, and the app bundle resources. A future native integration can replace this with a vendored xcframework, but do not add cloud STT.
 
 Do not add cloud STT.
 
@@ -167,6 +169,7 @@ Registered in `HotkeyManager.swift` with `cmdKey | shiftKey`.
 | `overlay.focusMode` | String | focus/click-through mode |
 | `overlay.markdownRender` | Bool | notes markdown render toggle |
 | `overlay.selectedTab` | String | root tab selection |
+| `overlay.activeProviderID` | String | active provider selection |
 
 ## Build / Run
 
@@ -187,4 +190,4 @@ The user prompt mentioned a scheme named `Overlay`, but the actual project curre
 3. Keep disk I/O off main where possible. `NotesStore` still uses its existing path and behavior.
 4. Do not reintroduce `NotificationCenter` for new app data flow. Existing font/opacity notifications are legacy hotkey glue.
 5. The root shell is `RootTabView`; `ContentView` remains for legacy/reference but `OverlayWindow` now hosts `RootTabView`.
-6. GRDB and ZIPFoundation are Xcode SPM dependencies. whisper.cpp is not wired as SPM because upstream resolution failed.
+6. GRDB and ZIPFoundation are Xcode SPM dependencies. whisper.cpp is not wired as SPM because upstream resolution failed; the app uses a local whisper.cpp CLI runtime instead.

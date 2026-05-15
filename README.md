@@ -76,7 +76,7 @@ Ollama:
 AWS Bedrock:
 - Region plus access key id, secret access key, optional session token.
 - IAM permission needed: `bedrock:InvokeModelWithResponseStream`.
-- The SigV4 signer is local and uses CryptoKit. The current Bedrock response-stream parser is intentionally minimal and returns a clear unsupported error until binary eventstream parsing is filled in.
+- The SigV4 signer is local and uses CryptoKit. Response-stream parsing is minimal but functional for Claude-style content deltas and common Llama/Meta generation fields. Bedrock model listing is not implemented; enter the model id manually.
 
 ## Speech
 
@@ -86,7 +86,7 @@ STT is local-only by design. `WhisperModelManager` downloads ggml models into:
 
 The default download target is `ggml-base.en.bin` from the upstream whisper.cpp Hugging Face mirror.
 
-Important current caveat: the official `ggerganov/whisper.cpp` repository did not resolve as an SPM package in this environment because Xcode could not find a root `Package.swift`. The app ships a local `WhisperEngine` scaffold and model manager, ready for a future upstream xcframework/binary target drop-in. No cloud STT path was added.
+Important current caveat: the official `ggerganov/whisper.cpp` repository did not resolve as an SPM package in this environment because Xcode could not find a root `Package.swift`. The app now uses a local whisper.cpp command-line runtime when present. Install or bundle `whisper-cli`, `whisper-cpp`, or a compatible `main` binary in `/usr/local/bin`, `/opt/homebrew/bin`, `~/Library/Application Support/Overlay/whisper/`, or the app bundle resources. No cloud STT path was added.
 
 ## Data Locations
 
@@ -120,7 +120,7 @@ System Settings → Privacy & Security → Screen & System Audio Recording
 
 The Settings tab includes a deep link to the privacy pane.
 
-`NSMicrophoneUsageDescription` is present for future optional mic capture, but mic capture is not implemented in this scaffold.
+`NSMicrophoneUsageDescription` is present for future optional mic capture, but mic capture is not implemented.
 
 ## Test Invisibility
 
