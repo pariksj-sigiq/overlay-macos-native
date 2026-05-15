@@ -57,6 +57,21 @@ final class WhisperModelManager: ObservableObject {
         fileManager.fileExists(atPath: modelURL(for: choice).path)
     }
 
+    func installedModelURL(preferred choice: ModelChoice = .baseEN) -> URL? {
+        if isInstalled(choice) {
+            return modelURL(for: choice)
+        }
+
+        guard let installedChoice = ModelChoice.allCases.first(where: { isInstalled($0) }) else {
+            return nil
+        }
+        return modelURL(for: installedChoice)
+    }
+
+    func installedModels() -> [ModelChoice] {
+        ModelChoice.allCases.filter { isInstalled($0) }
+    }
+
     func ensureBaseModelDownloaded() async throws -> URL {
         try await downloadIfNeeded(.baseEN)
     }

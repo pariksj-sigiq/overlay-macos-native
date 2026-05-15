@@ -27,7 +27,7 @@ final class OverlayWindow: NSWindow {
 
     private static let frameDefaultsKey = "overlay.frame"
 
-    private static let defaultSize = NSSize(width: 420, height: 320)
+    private static let defaultSize = NSSize(width: 760, height: 520)
 
     // MARK: - Init
 
@@ -74,7 +74,7 @@ final class OverlayWindow: NSWindow {
         self.acceptsMouseMovedEvents = true
 
         // Title shows up nowhere (borderless) but keeps AX tooling happy.
-        self.title = "Overlay"
+        self.title = "Overlay-Opus"
 
         // Restore an SwiftUI hosted root.
         installHostingView()

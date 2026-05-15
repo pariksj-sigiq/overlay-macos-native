@@ -310,8 +310,10 @@ struct SuggestionUpdate: Identifiable, Equatable {
 }
 
 enum SearchHistoryKind: String, Codable {
+    case session
     case transcript
     case document
+    case suggestion
 }
 
 struct SearchHistoryResult: Codable, Equatable, Hashable, Identifiable {
@@ -321,6 +323,15 @@ struct SearchHistoryResult: Codable, Equatable, Hashable, Identifiable {
     var title: String
     var snippet: String
     var createdAt: Int64
+}
+
+struct HistorySessionDetail: Equatable, Identifiable {
+    var session: CallSessionRecord
+    var documents: [ContextDocRecord]
+    var transcript: [TranscriptChunkRecord]
+    var suggestions: [SuggestionRecord]
+
+    var id: String { session.id }
 }
 
 typealias CallSession = CallSessionRecord

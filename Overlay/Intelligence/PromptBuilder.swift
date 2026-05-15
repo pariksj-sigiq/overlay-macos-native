@@ -16,7 +16,7 @@ struct PromptBuilder {
         You are Overlay-Opus, a private local meeting copilot. Help the user answer live call questions with concise, accurate, source-aware guidance. Do not invent facts. If the documents do not contain enough context, say what is missing and give a safe answer.
         """
 
-        let context = contextDocs.prefix(6).map { doc in
+        let context = rankedDocuments(contextDocs, for: question).prefix(3).map { doc in
             let title = doc.title.trimmingCharacters(in: .whitespacesAndNewlines)
             let summary = doc.summary?.trimmingCharacters(in: .whitespacesAndNewlines)
             let body = summary?.isEmpty == false ? (summary ?? "") : String(doc.text.prefix(800))
@@ -48,5 +48,48 @@ struct PromptBuilder {
                           modelID: modelID,
                           temperature: 0.3,
                           maxTokens: 500)
+    }
+
+    private func rankedDocuments(_ docs: [ContextDocRecord], for question: String) -> [ContextDocRecord] {
+        let terms = searchTerms(from: question)
+        guard !terms.isEmpty else { return docs }
+
+        return docs.enumerated()
+            .map { index, doc in
+                (doc: doc, score: relevanceScore(doc, terms: terms), index: index)
+            }
+            .sorted {
+                if $0.score == $1.score {
+                    return $0.index < $1.index
+                }
+                return $0.score > $1.score
+            }
+            .map(\.doc)
+    }
+
+    private func relevanceScore(_ doc: ContextDocRecord, terms: Set<String>) -> Int {
+        let haystack = [
+            doc.title,
+            doc.summary ?? "",
+            String(doc.text.prefix(2_000))
+        ].joined(separator: " ").lowercased()
+
+        return terms.reduce(0) { score, term in
+            score + (haystack.contains(term) ? 1 : 0)
+        }
+    }
+
+    private func searchTerms(from text: String) -> Set<String> {
+        let stopwords: Set<String> = [
+            "about", "after", "again", "also", "because", "could", "from",
+            "have", "into", "that", "their", "them", "then", "there", "they",
+            "this", "what", "when", "where", "which", "with", "would", "your"
+        ]
+
+        return Set(text
+            .lowercased()
+            .split { !$0.isLetter && !$0.isNumber }
+            .map(String.init)
+            .filter { $0.count >= 4 && !stopwords.contains($0) })
     }
 }

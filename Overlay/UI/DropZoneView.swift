@@ -10,13 +10,14 @@ struct DropZoneView: View {
     var onURLs: ([URL]) -> Void
 
     @State private var isTargeted = false
+    @State private var isLoading = false
 
     var body: some View {
         VStack(spacing: 8) {
-            Image(systemName: "tray.and.arrow.down")
+            Image(systemName: isLoading ? "doc.badge.clock" : "tray.and.arrow.down")
                 .font(.system(size: 22))
                 .foregroundStyle(isTargeted ? Color.accentColor : Color.secondary)
-            Text("Drop documents")
+            Text(isLoading ? "Reading drop" : "Drop documents")
                 .font(.system(size: 13, weight: .semibold))
             Text("PDF, DOCX, Markdown, TXT")
                 .font(.system(size: 11))
@@ -39,8 +40,21 @@ struct DropZoneView: View {
     }
 
     private func loadFileURLs(from providers: [NSItemProvider]) {
-        for provider in providers where provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+        let fileProviders = providers.filter {
+            $0.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier)
+        }
+        guard !fileProviders.isEmpty else { return }
+
+        isLoading = true
+
+        let group = DispatchGroup()
+        let lock = NSLock()
+        var urls: [URL] = []
+
+        for provider in fileProviders {
+            group.enter()
             provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
+                defer { group.leave() }
                 let url: URL?
                 if let data = item as? Data {
                     url = URL(dataRepresentation: data, relativeTo: nil)
@@ -51,9 +65,16 @@ struct DropZoneView: View {
                 }
 
                 guard let url else { return }
-                DispatchQueue.main.async {
-                    onURLs([url])
-                }
+                lock.lock()
+                urls.append(url)
+                lock.unlock()
+            }
+        }
+
+        group.notify(queue: .main) {
+            isLoading = false
+            if !urls.isEmpty {
+                onURLs(urls)
             }
         }
     }

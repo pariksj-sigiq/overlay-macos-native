@@ -5,8 +5,14 @@
 
 import AVFoundation
 import CoreMedia
+import Darwin
 import Foundation
 import ScreenCaptureKit
+
+struct CapturedAudioFrame: Sendable {
+    let samples: [Float]
+    let level: Float
+}
 
 enum SystemAudioCaptureError: LocalizedError {
     case noDisplayAvailable
@@ -35,21 +41,23 @@ actor SystemAudioCapturer {
 
     private var stream: SCStream?
     private var output: SystemAudioStreamOutput?
-    private var continuation: AsyncStream<[Float]>.Continuation?
+    private var continuation: AsyncStream<CapturedAudioFrame>.Continuation?
     private var excludedWindows: [CGWindowID] = []
 
     func setExcludedWindows(_ ids: [CGWindowID]) {
         excludedWindows = ids
     }
 
-    func frames() -> AsyncStream<[Float]> {
+    func frames() -> AsyncStream<CapturedAudioFrame> {
         AsyncStream { continuation in
             Task { await self.setContinuation(continuation) }
         }
     }
 
-    func start(excludingWindows ids: [CGWindowID] = []) async throws {
-        excludedWindows = ids
+    func start(excludingWindows ids: [CGWindowID]? = nil) async throws {
+        if let ids {
+            excludedWindows = ids
+        }
 
         do {
             let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
@@ -57,7 +65,8 @@ actor SystemAudioCapturer {
                 throw SystemAudioCaptureError.noDisplayAvailable
             }
 
-            let excluded = content.windows.filter { ids.contains($0.windowID) }
+            let excludedWindowIDs = excludedWindows
+            let excluded = content.windows.filter { excludedWindowIDs.contains($0.windowID) }
             let filter = SCContentFilter(display: display, excludingWindows: excluded)
 
             let configuration = SCStreamConfiguration()
@@ -71,7 +80,9 @@ actor SystemAudioCapturer {
 
             let output = SystemAudioStreamOutput { [weak self] samples in
                 guard let self else { return }
-                Task { await self.emit(samples) }
+                let frame = CapturedAudioFrame(samples: samples,
+                                               level: Self.audioLevel(for: samples))
+                Task { await self.emit(frame) }
             }
 
             let stream = SCStream(filter: filter, configuration: configuration, delegate: nil)
@@ -104,12 +115,26 @@ actor SystemAudioCapturer {
 
     // MARK: - Private
 
-    private func setContinuation(_ continuation: AsyncStream<[Float]>.Continuation) {
+    private func setContinuation(_ continuation: AsyncStream<CapturedAudioFrame>.Continuation) {
         self.continuation = continuation
     }
 
-    private func emit(_ samples: [Float]) {
-        continuation?.yield(samples)
+    private func emit(_ frame: CapturedAudioFrame) {
+        continuation?.yield(frame)
+    }
+
+    private static func audioLevel(for samples: [Float]) -> Float {
+        guard !samples.isEmpty else { return 0 }
+
+        let sumOfSquares = samples.reduce(Float(0)) { partial, sample in
+            partial + (sample * sample)
+        }
+        let rms = sqrt(Double(sumOfSquares / Float(samples.count)))
+        guard rms.isFinite, rms > 0 else { return 0 }
+
+        let decibels = 20.0 * log10(max(rms, 0.000_000_1))
+        let normalized = (decibels + 60.0) / 60.0
+        return Float(min(1.0, max(0.0, normalized)))
     }
 }
 

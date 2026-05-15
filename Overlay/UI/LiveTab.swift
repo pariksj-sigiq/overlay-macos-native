@@ -40,7 +40,7 @@ struct LiveTab: View {
                 .font(.system(size: 12, weight: .medium, design: .monospaced))
                 .foregroundStyle(.secondary)
 
-            AudioLevelMeter()
+            AudioLevelMeter(level: sessionStore.audioLevel)
                 .frame(width: 120)
 
             Text(sessionStore.status)
@@ -49,8 +49,6 @@ struct LiveTab: View {
 
             Spacer()
 
-            Toggle("Pause", isOn: $isPaused)
-                .toggleStyle(.checkbox)
             Toggle("Auto-scroll", isOn: $autoScroll)
                 .toggleStyle(.checkbox)
 
@@ -67,8 +65,13 @@ struct LiveTab: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 10) {
-                    if sessionStore.transcript.isEmpty {
-                        Text("Transcript will appear here once the call starts.")
+                    if let error = sessionStore.errorMessage {
+                        Label(error, systemImage: "exclamationmark.triangle")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(.orange)
+                            .padding(12)
+                    } else if sessionStore.transcript.isEmpty {
+                        Text(emptyTranscriptText)
                             .font(.system(size: 13))
                             .foregroundStyle(.tertiary)
                             .padding(12)
@@ -109,6 +112,16 @@ struct LiveTab: View {
         return String(format: "%02d:%02d", seconds / 60, seconds % 60)
     }
 
+    private var emptyTranscriptText: String {
+        if sessionStore.activeSession == nil {
+            return "Start a call from Brief before recording."
+        }
+        if sessionStore.isRecording {
+            return "Listening. Transcript appears after local Whisper returns text."
+        }
+        return "Recording is paused."
+    }
+
     private func copyAll() {
         let value = sessionStore.transcript.map { "\($0.speaker.rawValue): \($0.text)" }.joined(separator: "\n")
         NSPasteboard.general.clearContents()
@@ -117,13 +130,15 @@ struct LiveTab: View {
 }
 
 private struct AudioLevelMeter: View {
+    var level: Float
+
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .leading) {
                 Capsule().fill(Color.white.opacity(0.08))
                 Capsule()
                     .fill(Color.green.opacity(0.65))
-                    .frame(width: max(8, proxy.size.width * 0.36))
+                    .frame(width: max(4, proxy.size.width * CGFloat(max(0, min(1, level)))))
             }
         }
         .frame(height: 8)

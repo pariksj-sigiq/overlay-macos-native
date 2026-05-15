@@ -11,13 +11,28 @@ struct SuggestionsTab: View {
 
     @FocusState private var promptFocused: Bool
     @State private var prompt = ""
+    @State private var localMessage: String?
 
     var body: some View {
         VStack(spacing: 0) {
+            if let message = visibleMessage {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle")
+                    Text(message)
+                        .lineLimit(2)
+                    Spacer()
+                }
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.orange)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.orange.opacity(0.12))
+            }
+
             ScrollView {
                 LazyVStack(spacing: 10) {
                     if sessionStore.suggestions.isEmpty {
-                        Text("Suggestions will stream here when questions are detected or you ask manually.")
+                        Text(emptyStateText)
                             .font(.system(size: 13))
                             .foregroundStyle(.tertiary)
                             .padding(12)
@@ -38,13 +53,28 @@ struct SuggestionsTab: View {
                     .focused($promptFocused)
                     .onSubmit(sendPrompt)
                 Button("Send", action: sendPrompt)
-                    .disabled(prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(!canSendPrompt)
             }
             .padding(12)
         }
         .onReceive(commandStore.$focusSuggestionPromptToken) { _ in
             promptFocused = true
         }
+    }
+
+    private var canSendPrompt: Bool {
+        sessionStore.activeSession != nil &&
+        !prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var emptyStateText: String {
+        sessionStore.activeSession == nil
+            ? "Start a call from Brief before asking for live suggestions."
+            : "Suggestions will stream here when questions are detected or you ask manually."
+    }
+
+    private var visibleMessage: String? {
+        localMessage ?? sessionStore.errorMessage
     }
 
     private func suggestionCard(_ suggestion: SuggestionUpdate) -> some View {
@@ -69,7 +99,7 @@ struct SuggestionsTab: View {
                 }
                 .buttonStyle(.borderless)
                 .help("Copy")
-                Button(action: sessionStore.regenerateLast) {
+                Button(action: { sessionStore.regenerateSuggestion(suggestion) }) {
                     Image(systemName: "arrow.clockwise")
                 }
                 .buttonStyle(.borderless)
@@ -95,6 +125,11 @@ struct SuggestionsTab: View {
     private func sendPrompt() {
         let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
+        guard sessionStore.activeSession != nil else {
+            localMessage = "Start a call from Brief before asking for suggestions."
+            return
+        }
+        localMessage = nil
         sessionStore.manualAsk(trimmed)
         prompt = ""
     }

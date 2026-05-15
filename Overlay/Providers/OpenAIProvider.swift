@@ -8,11 +8,14 @@ import Foundation
 struct OpenAIProviderConfig: Codable, Equatable {
     var baseURL: URL?
     var apiKeySecretName: String
+    var defaultModelID: String?
 
     init(baseURL: URL? = URL(string: "https://api.openai.com/v1"),
-         apiKeySecretName: String = "openai.apiKey") {
+         apiKeySecretName: String = "openai.apiKey",
+         defaultModelID: String? = nil) {
         self.baseURL = baseURL
         self.apiKeySecretName = apiKeySecretName
+        self.defaultModelID = defaultModelID
     }
 }
 

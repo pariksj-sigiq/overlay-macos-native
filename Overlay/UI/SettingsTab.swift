@@ -11,6 +11,8 @@ struct SettingsTab: View {
     @ObservedObject private var whisperModels = WhisperModelManager.shared
 
     @State private var whisperModel = WhisperModelManager.ModelChoice.baseEN
+    @State private var editingConfig: ProviderConfigRecord?
+    @State private var providerMessage: String?
 
     var body: some View {
         ScrollView {
@@ -25,7 +27,28 @@ struct SettingsTab: View {
                 }
 
                 section("Providers") {
-                    ProviderEditorView()
+                    if !providerRegistry.configs.isEmpty {
+                        Picker("Active", selection: activeProviderBinding) {
+                            ForEach(providerRegistry.configs) { config in
+                                Text(config.name).tag(Optional(config.id))
+                            }
+                        }
+                        .pickerStyle(.menu)
+                    }
+
+                    HStack {
+                        Spacer()
+                        Button {
+                            editingConfig = nil
+                        } label: {
+                            Label("New", systemImage: "plus")
+                        }
+                        .disabled(editingConfig == nil)
+                    }
+
+                    ProviderEditorView(editingConfig: editingConfig) { saved in
+                        editingConfig = saved
+                    }
 
                     if providerRegistry.configs.isEmpty {
                         Text("No providers saved yet.")
@@ -34,16 +57,32 @@ struct SettingsTab: View {
                     } else {
                         ForEach(providerRegistry.configs) { config in
                             HStack {
+                                if providerRegistry.activeProviderID == config.id {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(.green)
+                                }
                                 Text(config.name)
                                     .font(.system(size: 12, weight: .medium))
                                 Text(config.kind.label)
                                     .font(.system(size: 10))
                                     .foregroundStyle(.tertiary)
+                                if let model = ProviderRegistry.defaultModelID(for: config) {
+                                    Text(model)
+                                        .font(.system(size: 10, design: .monospaced))
+                                        .foregroundStyle(.tertiary)
+                                        .lineLimit(1)
+                                }
                                 Spacer()
+                                Button {
+                                    editingConfig = config
+                                } label: {
+                                    Image(systemName: "pencil")
+                                }
+                                .buttonStyle(.borderless)
+                                .help("Edit provider")
                                 Button(role: .destructive) {
                                     Task {
-                                        try? await AppDatabase.shared.deleteProviderConfig(id: config.id)
-                                        try? await providerRegistry.reload()
+                                        await deleteProvider(config)
                                     }
                                 } label: {
                                     Image(systemName: "trash")
@@ -51,6 +90,12 @@ struct SettingsTab: View {
                                 .buttonStyle(.borderless)
                             }
                         }
+                    }
+
+                    if let providerMessage {
+                        Text(providerMessage)
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
                     }
                 }
 
@@ -90,7 +135,7 @@ struct SettingsTab: View {
                         Button("Open Privacy Settings") {
                             openPrivacySettings()
                         }
-                        Text("Grant microphone and screen recording permissions when live capture is wired.")
+                        Text("Grant Screen Recording when prompted so macOS allows system-audio capture.")
                             .font(.system(size: 11))
                             .foregroundStyle(.secondary)
                     }
@@ -101,6 +146,13 @@ struct SettingsTab: View {
         .task {
             try? await providerRegistry.reload()
         }
+    }
+
+    private var activeProviderBinding: Binding<String?> {
+        Binding(
+            get: { providerRegistry.activeProviderID },
+            set: { providerRegistry.setActiveProviderID($0) }
+        )
     }
 
     private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
@@ -131,5 +183,18 @@ struct SettingsTab: View {
     private func openPrivacySettings() {
         guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy") else { return }
         NSWorkspace.shared.open(url)
+    }
+
+    @MainActor
+    private func deleteProvider(_ config: ProviderConfigRecord) async {
+        do {
+            try await providerRegistry.deleteProviderConfig(id: config.id)
+            if editingConfig?.id == config.id {
+                editingConfig = nil
+            }
+            providerMessage = "Deleted \(config.name)"
+        } catch {
+            providerMessage = error.localizedDescription
+        }
     }
 }

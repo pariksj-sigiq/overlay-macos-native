@@ -25,7 +25,7 @@ actor SuggestionEngine {
 
     private let promptBuilder = PromptBuilder()
     private var lastTriggers: [Trigger] = []
-    private var activeTask: Task<Void, Never>?
+    private var activeTasks: [UUID: Task<Void, Never>] = [:]
 
     func suggest(trigger: Trigger,
                  sessionID: String,
@@ -39,9 +39,10 @@ actor SuggestionEngine {
             lastTriggers.removeFirst(lastTriggers.count - 5)
         }
 
-        activeTask?.cancel()
-        activeTask = Task {
+        let taskID = UUID()
+        activeTasks[taskID] = Task {
             await runSuggestion(trigger: trigger,
+                                taskID: taskID,
                                 sessionID: sessionID,
                                 brief: brief,
                                 providerID: providerID,
@@ -68,17 +69,23 @@ actor SuggestionEngine {
     }
 
     func stop() {
-        activeTask?.cancel()
-        activeTask = nil
+        for task in activeTasks.values {
+            task.cancel()
+        }
+        activeTasks.removeAll()
     }
 
     private func runSuggestion(trigger: Trigger,
+                               taskID: UUID,
                                sessionID: String,
                                brief: String,
                                providerID: String,
                                modelID: String,
                                contextDocs: [ContextDocRecord],
                                transcriptTail: [TranscriptChunkRecord]) async {
+        defer {
+            activeTasks[taskID] = nil
+        }
         let suggestionID = UUID().uuidString
         let started = Date()
         let kind: SuggestionKind
@@ -133,7 +140,7 @@ actor SuggestionEngine {
                                           content: accumulated,
                                           model: modelID,
                                           latencyMS: Int64(Date().timeIntervalSince(started) * 1000))
-            try await AppDatabase.shared.insertSuggestion(record)
+            _ = try await AppDatabase.shared.insertSuggestion(record)
             updates.send(SuggestionUpdate(id: suggestionID,
                                           sessionID: sessionID,
                                           ts: Date.unixMilliseconds,

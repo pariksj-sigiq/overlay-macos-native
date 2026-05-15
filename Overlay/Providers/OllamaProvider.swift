@@ -7,9 +7,12 @@ import Foundation
 
 struct OllamaProviderConfig: Codable, Equatable {
     var baseURL: URL
+    var defaultModelID: String?
 
-    init(baseURL: URL = Self.defaultBaseURL()) {
+    init(baseURL: URL = Self.defaultBaseURL(),
+         defaultModelID: String? = nil) {
         self.baseURL = baseURL
+        self.defaultModelID = defaultModelID
     }
 
     private static func defaultBaseURL() -> URL {

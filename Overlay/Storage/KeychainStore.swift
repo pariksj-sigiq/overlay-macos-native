@@ -99,6 +99,12 @@ final class KeychainStore {
         }
     }
 
+    func delete(accounts: [String]) throws {
+        for account in Set(accounts) {
+            try delete(account: account)
+        }
+    }
+
     private func baseQuery(account: String) -> [String: Any] {
         [
             kSecClass as String: kSecClassGenericPassword,

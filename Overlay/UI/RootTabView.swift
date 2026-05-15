@@ -15,6 +15,9 @@ final class AppCommandStore: ObservableObject {
     private init() {}
 
     func focusSuggestionPrompt() {
+        if FocusModeStore.shared.mode != FocusMode.interactive {
+            FocusModeStore.shared.mode = .interactive
+        }
         selectedTab = .suggestions
         focusSuggestionPromptToken = UUID()
     }
@@ -94,21 +97,17 @@ struct RootTabView: View {
                 dragHandle
                 toolbar
                     .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
+                    .padding(.vertical, 7)
                 Divider().opacity(0.4)
                 tabStrip
                     .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
-                Divider().opacity(0.25)
-                transparencyBar
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
+                    .padding(.vertical, 6)
                 Divider().opacity(0.25)
                 tabContent
                     .allowsHitTesting(bodyHitTestable)
             }
         }
-        .frame(minWidth: 520, minHeight: 360)
+        .frame(minWidth: 640, minHeight: 440)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -144,6 +143,8 @@ struct RootTabView: View {
                 markdownButton
             }
 
+            opacityControl
+
             Button(action: togglePin) {
                 Image(systemName: pinState.isPinned ? "pin.fill" : "pin")
                     .foregroundStyle(pinState.isPinned ? Color.accentColor : Color.secondary)
@@ -175,11 +176,11 @@ struct RootTabView: View {
         HStack(spacing: 4) {
             ForEach(OverlayTab.allCases) { tab in
                 Button(action: { selectedTab.wrappedValue = tab }) {
-                    VStack(spacing: 3) {
+                    HStack(spacing: 5) {
                         Image(systemName: tab.icon)
                             .font(.system(size: 12, weight: .medium))
                         Text(tab.title)
-                            .font(.system(size: 9, weight: .medium))
+                            .font(.system(size: 11, weight: .medium))
                             .lineLimit(1)
                     }
                     .frame(maxWidth: .infinity)
@@ -258,6 +259,22 @@ struct RootTabView: View {
         .help(focusStore.mode.description)
     }
 
+    private var opacityControl: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "square.on.square.dashed")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+            Slider(value: $opacity, in: minOpacity...maxOpacity)
+                .controlSize(.small)
+                .frame(width: 86)
+            Text("\(Int((1.0 - opacity) * 100))%")
+                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .frame(width: 32, alignment: .trailing)
+        }
+        .help("Transparency")
+    }
+
     private var modeBadgeColor: Color {
         switch focusStore.mode {
         case .interactive: return .secondary
@@ -275,23 +292,6 @@ struct RootTabView: View {
 
     private var modeBorderWidth: CGFloat {
         focusStore.mode == FocusMode.interactive ? 0.5 : 1.5
-    }
-
-    private var transparencyBar: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "square.on.square.dashed")
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-            Text("Transparency")
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.secondary)
-            Slider(value: $opacity, in: minOpacity...maxOpacity)
-                .controlSize(.small)
-            Text("\(Int((1.0 - opacity) * 100))%")
-                .font(.system(size: 11, weight: .medium, design: .monospaced))
-                .foregroundStyle(.secondary)
-                .frame(width: 34, alignment: .trailing)
-        }
     }
 
     private var keyboardShortcuts: some View {
@@ -322,10 +322,7 @@ struct RootTabView: View {
 
     private func closeWindow() {
         NotesStore.shared.flush()
-        NSApp.keyWindow?.performClose(nil)
-        if NSApp.keyWindow == nil {
-            NSApp.mainWindow?.performClose(nil)
-        }
+        NSApp.windows.first { $0 is OverlayWindow }?.orderOut(nil)
     }
 }
 
