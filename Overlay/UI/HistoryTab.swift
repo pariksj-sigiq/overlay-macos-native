@@ -3,6 +3,7 @@
 //  OverlayOpus
 //
 
+import AppKit
 import SwiftUI
 
 struct HistoryTab: View {
@@ -13,6 +14,9 @@ struct HistoryTab: View {
     @State private var results: [SearchHistoryResult] = []
     @State private var reviewArtifacts: [SessionArtifactRecord] = []
     @State private var isGeneratingReview = false
+    @State private var isExporting = false
+    @State private var confirmingDelete = false
+    @State private var exportedURL: URL?
     @State private var errorMessage: String?
 
     var body: some View {
@@ -52,19 +56,43 @@ struct HistoryTab: View {
 
                         Spacer()
 
-                        Button {
-                            Task { await generateReview() }
-                        } label: {
-                            Label(isGeneratingReview ? "Reviewing" : "Generate Review",
-                                  systemImage: "doc.text.magnifyingglass")
+                        HStack(spacing: 8) {
+                            Button {
+                                Task { await generateReview() }
+                            } label: {
+                                Label(isGeneratingReview ? "Reviewing" : "Generate Review",
+                                      systemImage: "doc.text.magnifyingglass")
+                            }
+                            .buttonStyle(.bordered)
+                            .disabled(isGeneratingReview)
+
+                            Button {
+                                Task { await exportSelected() }
+                            } label: {
+                                Label(isExporting ? "Exporting" : "Export",
+                                      systemImage: "square.and.arrow.up")
+                            }
+                            .buttonStyle(.bordered)
+                            .disabled(isExporting)
+
+                            Button(role: .destructive) {
+                                confirmingDelete = true
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                            .buttonStyle(.bordered)
                         }
-                        .buttonStyle(.bordered)
-                        .disabled(isGeneratingReview)
                     }
                     Divider().opacity(0.25)
 
                     ScrollView {
                         VStack(alignment: .leading, spacing: 10) {
+                            if let exportedURL {
+                                Text("Exported to \(exportedURL.lastPathComponent)")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(.secondary)
+                            }
+
                             Text(selectedResult.snippet)
                                 .font(.system(size: 13))
                                 .textSelection(.enabled)
@@ -105,13 +133,66 @@ struct HistoryTab: View {
             await search()
         }
         .onChange(of: selectedResult) { _, _ in
+            exportedURL = nil
             Task { await loadReviewArtifacts() }
+        }
+        .confirmationDialog("Delete this session permanently?",
+                            isPresented: $confirmingDelete,
+                            titleVisibility: .visible) {
+            Button("Delete Session", role: .destructive) {
+                Task { await deleteSelected() }
+            }
         }
     }
 
     private func search() async {
         do {
             results = try await AppDatabase.shared.searchHistory(query: query)
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func exportSelected() async {
+        guard let selectedResult else { return }
+        isExporting = true
+        defer { isExporting = false }
+
+        do {
+            let url = try await SessionExportService().export(sessionID: selectedResult.sessionID)
+            exportedURL = url
+            NSWorkspace.shared.activateFileViewerSelecting([url])
+            _ = try? await AppDatabase.shared.insertPrivacyAudit(
+                PrivacyAuditRecord(id: UUID().uuidString,
+                                   sessionID: selectedResult.sessionID,
+                                   ts: Date.unixMilliseconds,
+                                   action: "session_exported",
+                                   detail: url.path)
+            )
+            errorMessage = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func deleteSelected() async {
+        guard let selectedResult else { return }
+        let sessionID = selectedResult.sessionID
+
+        do {
+            _ = try? await AppDatabase.shared.insertPrivacyAudit(
+                PrivacyAuditRecord(id: UUID().uuidString,
+                                   sessionID: nil,
+                                   ts: Date.unixMilliseconds,
+                                   action: "session_deleted",
+                                   detail: sessionID)
+            )
+            try await AppDatabase.shared.deleteSession(id: sessionID)
+            results.removeAll { $0.sessionID == sessionID }
+            reviewArtifacts = []
+            exportedURL = nil
+            self.selectedResult = nil
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription

@@ -48,6 +48,7 @@
 		B1000010000000000000021 /* DocxParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000021 /* DocxParser.swift */; };
 		B1000010000000000000022 /* PdfParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000022 /* PdfParser.swift */; };
 		B1000010000000000000023 /* CallSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000023 /* CallSessionStore.swift */; };
+		B1000010000000000000039 /* SessionExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000039 /* SessionExportService.swift */; };
 		B1000010000000000000024 /* RootTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000024 /* RootTabView.swift */; };
 		B1000010000000000000025 /* NotesTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000025 /* NotesTab.swift */; };
 		B1000010000000000000026 /* BriefTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000026 /* BriefTab.swift */; };
@@ -106,6 +107,7 @@
 		B1000020000000000000021 /* DocxParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocxParser.swift; sourceTree = "<group>"; };
 		B1000020000000000000022 /* PdfParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PdfParser.swift; sourceTree = "<group>"; };
 		B1000020000000000000023 /* CallSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallSessionStore.swift; sourceTree = "<group>"; };
+		B1000020000000000000039 /* SessionExportService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionExportService.swift; sourceTree = "<group>"; };
 		B1000020000000000000024 /* RootTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootTabView.swift; sourceTree = "<group>"; };
 		B1000020000000000000025 /* NotesTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesTab.swift; sourceTree = "<group>"; };
 		B1000020000000000000026 /* BriefTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BriefTab.swift; sourceTree = "<group>"; };
@@ -259,6 +261,7 @@
 			isa = PBXGroup;
 			children = (
 				B1000020000000000000023 /* CallSessionStore.swift */,
+				B1000020000000000000039 /* SessionExportService.swift */,
 			);
 			path = Session;
 			sourceTree = "<group>";
@@ -398,6 +401,7 @@
 				B1000010000000000000021 /* DocxParser.swift in Sources */,
 				B1000010000000000000022 /* PdfParser.swift in Sources */,
 				B1000010000000000000023 /* CallSessionStore.swift in Sources */,
+				B1000010000000000000039 /* SessionExportService.swift in Sources */,
 				B1000010000000000000024 /* RootTabView.swift in Sources */,
 				B1000010000000000000025 /* NotesTab.swift in Sources */,
 				B1000010000000000000026 /* BriefTab.swift in Sources */,

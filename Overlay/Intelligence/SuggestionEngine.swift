@@ -165,7 +165,7 @@ actor SuggestionEngine {
                                           content: accumulated,
                                           model: modelID,
                                           latencyMS: Int64(Date().timeIntervalSince(started) * 1000))
-            try await AppDatabase.shared.insertSuggestion(record)
+            _ = try await AppDatabase.shared.insertSuggestion(record)
             updates.send(SuggestionUpdate(id: suggestionID,
                                           sessionID: sessionID,
                                           ts: Date.unixMilliseconds,

@@ -6,6 +6,27 @@
 import Foundation
 import GRDB
 
+enum AppDatabaseError: LocalizedError {
+    case missingSession(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .missingSession(let id):
+            return "No session found for id \(id)"
+        }
+    }
+}
+
+struct SessionExportSnapshot: Codable {
+    var session: CallSessionRecord
+    var contextDocs: [ContextDocRecord]
+    var transcript: [TranscriptChunkRecord]
+    var suggestions: [SuggestionRecord]
+    var memory: [MemoryItemRecord]
+    var artifacts: [SessionArtifactRecord]
+    var audits: [PrivacyAuditRecord]
+}
+
 final class AppDatabase {
     static let shared: AppDatabase = {
         do {
@@ -192,6 +213,53 @@ final class AppDatabase {
             return try request
                 .order(Column("ts").desc)
                 .fetchAll(db)
+        }
+    }
+
+    func exportSnapshot(sessionID: String) async throws -> SessionExportSnapshot {
+        try await read { db in
+            guard let session = try CallSessionRecord.fetchOne(db, key: sessionID) else {
+                throw AppDatabaseError.missingSession(sessionID)
+            }
+
+            let contextDocs = try ContextDocRecord
+                .filter(ContextDocRecord.Columns.sessionID == sessionID)
+                .order(ContextDocRecord.Columns.addedAt.asc)
+                .fetchAll(db)
+            let transcript = try TranscriptChunkRecord
+                .filter(TranscriptChunkRecord.Columns.sessionID == sessionID)
+                .order(TranscriptChunkRecord.Columns.ts.asc)
+                .fetchAll(db)
+            let suggestions = try SuggestionRecord
+                .filter(SuggestionRecord.Columns.sessionID == sessionID)
+                .order(SuggestionRecord.Columns.ts.asc)
+                .fetchAll(db)
+            let memory = try MemoryItemRecord
+                .filter(Column("session_id") == sessionID)
+                .order(Column("ts").asc)
+                .fetchAll(db)
+            let artifacts = try SessionArtifactRecord
+                .filter(Column("session_id") == sessionID)
+                .order(Column("ts").asc)
+                .fetchAll(db)
+            let audits = try PrivacyAuditRecord
+                .filter(Column("session_id") == sessionID)
+                .order(Column("ts").asc)
+                .fetchAll(db)
+
+            return SessionExportSnapshot(session: session,
+                                         contextDocs: contextDocs,
+                                         transcript: transcript,
+                                         suggestions: suggestions,
+                                         memory: memory,
+                                         artifacts: artifacts,
+                                         audits: audits)
+        }
+    }
+
+    func deleteSession(id: String) async throws {
+        try await write { db in
+            _ = try CallSessionRecord.deleteOne(db, key: id)
         }
     }
 
