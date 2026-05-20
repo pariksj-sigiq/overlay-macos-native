@@ -5,56 +5,66 @@
 
 import Combine
 import Foundation
+import WhisperKit
 
 @MainActor
 final class WhisperModelManager: ObservableObject {
 
     enum ModelChoice: String, CaseIterable, Identifiable {
-        case tinyEN = "tiny.en"
+        case tiny = "tiny"
         case baseEN = "base.en"
         case smallEN = "small.en"
-        case mediumEN = "medium.en"
+        case largeV3 = "large-v3-v20240930_626MB"
 
         var id: String { rawValue }
+        var modelName: String { rawValue }
 
-        var fileName: String {
-            "ggml-\(rawValue).bin"
-        }
-
-        var downloadURL: URL {
-            get throws {
-                guard let url = URL(string: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/\(fileName)") else {
-                    throw URLError(.badURL)
-                }
-                return url
+        var label: String {
+            switch self {
+            case .tiny:
+                return "Tiny"
+            case .baseEN:
+                return "Base English"
+            case .smallEN:
+                return "Small English"
+            case .largeV3:
+                return "Large v3"
             }
         }
     }
 
     static let shared = WhisperModelManager()
+    private static let selectedModelKey = "overlay.whisperKitModel"
 
     @Published private(set) var downloadProgress: Double = 0
     @Published private(set) var isDownloading = false
     @Published private(set) var errorMessage: String?
+    @Published var selectedModel: ModelChoice {
+        didSet {
+            UserDefaults.standard.set(selectedModel.rawValue, forKey: Self.selectedModelKey)
+        }
+    }
 
     private let fileManager = FileManager.default
 
     var modelsDirectory: URL {
         let base = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support", isDirectory: true)
-        return base.appendingPathComponent("Overlay/models", isDirectory: true)
+        return base.appendingPathComponent("Overlay/whisperkit-models", isDirectory: true)
     }
 
     private init() {
+        if let rawValue = UserDefaults.standard.string(forKey: Self.selectedModelKey),
+           let model = ModelChoice(rawValue: rawValue) {
+            selectedModel = model
+        } else {
+            selectedModel = .baseEN
+        }
         try? ensureModelsDirectory()
     }
 
-    func modelURL(for choice: ModelChoice) -> URL {
-        modelsDirectory.appendingPathComponent(choice.fileName, isDirectory: false)
-    }
-
     func isInstalled(_ choice: ModelChoice) -> Bool {
-        fileManager.fileExists(atPath: modelURL(for: choice).path)
+        installedModelURL(for: choice) != nil
     }
 
     func ensureBaseModelDownloaded() async throws -> URL {
@@ -62,9 +72,8 @@ final class WhisperModelManager: ObservableObject {
     }
 
     func downloadIfNeeded(_ choice: ModelChoice) async throws -> URL {
-        let destination = modelURL(for: choice)
-        if fileManager.fileExists(atPath: destination.path) {
-            return destination
+        if let modelURL = installedModelURL(for: choice) {
+            return modelURL
         }
         return try await download(choice)
     }
@@ -78,23 +87,19 @@ final class WhisperModelManager: ObservableObject {
         errorMessage = nil
 
         do {
-            let destination = modelURL(for: choice)
-            let delegate = ModelDownloadDelegate { [weak self] progress in
-                Task { @MainActor in self?.downloadProgress = progress }
-            }
-            let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
-            let (temporaryURL, _) = try await session.download(from: try choice.downloadURL)
-
-            try await Task.detached(priority: .utility) { [fileManager] in
-                if fileManager.fileExists(atPath: destination.path) {
-                    try fileManager.removeItem(at: destination)
+            let modelURL = try await WhisperKit.download(variant: choice.modelName,
+                                                         downloadBase: modelsDirectory) { [weak self] progress in
+                Task { @MainActor in
+                    let fraction = progress.fractionCompleted
+                    if fraction.isFinite {
+                        self?.downloadProgress = fraction
+                    }
                 }
-                try fileManager.moveItem(at: temporaryURL, to: destination)
-            }.value
+            }
 
             downloadProgress = 1
             isDownloading = false
-            return destination
+            return modelURL
         } catch {
             isDownloading = false
             errorMessage = error.localizedDescription
@@ -102,31 +107,19 @@ final class WhisperModelManager: ObservableObject {
         }
     }
 
+    private func installedModelURL(for choice: ModelChoice) -> URL? {
+        let prefix = "openai_whisper-\(choice.modelName)"
+        guard let contents = try? fileManager.contentsOfDirectory(at: modelsDirectory,
+                                                                  includingPropertiesForKeys: nil,
+                                                                  options: [.skipsHiddenFiles]) else {
+            return nil
+        }
+        return contents.first { $0.lastPathComponent.hasPrefix(prefix) }
+    }
+
     private func ensureModelsDirectory() throws {
         try fileManager.createDirectory(at: modelsDirectory,
                                         withIntermediateDirectories: true,
                                         attributes: nil)
-    }
-}
-
-private final class ModelDownloadDelegate: NSObject, URLSessionDownloadDelegate {
-    private let onProgress: (Double) -> Void
-
-    init(onProgress: @escaping (Double) -> Void) {
-        self.onProgress = onProgress
-    }
-
-    func urlSession(_ session: URLSession,
-                    downloadTask: URLSessionDownloadTask,
-                    didWriteData bytesWritten: Int64,
-                    totalBytesWritten: Int64,
-                    totalBytesExpectedToWrite: Int64) {
-        guard totalBytesExpectedToWrite > 0 else { return }
-        onProgress(Double(totalBytesWritten) / Double(totalBytesExpectedToWrite))
-    }
-
-    func urlSession(_ session: URLSession,
-                    downloadTask: URLSessionDownloadTask,
-                    didFinishDownloadingTo location: URL) {
     }
 }

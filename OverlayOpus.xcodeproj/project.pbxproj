@@ -53,6 +53,7 @@
 		B1000010000000000000032 /* DropZoneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000032 /* DropZoneView.swift */; };
 		B1000010000000000000101 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = C1000110000000000000001 /* GRDB */; };
 		B1000010000000000000102 /* ZIPFoundation in Frameworks */ = {isa = PBXBuildFile; productRef = C1000110000000000000002 /* ZIPFoundation */; };
+		B1000010000000000000103 /* WhisperKit in Frameworks */ = {isa = PBXBuildFile; productRef = C1000110000000000000003 /* WhisperKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -112,6 +113,7 @@
 			files = (
 				B1000010000000000000101 /* GRDB in Frameworks */,
 				B1000010000000000000102 /* ZIPFoundation in Frameworks */,
+				B1000010000000000000103 /* WhisperKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -278,6 +280,7 @@
 			packageProductDependencies = (
 				C1000110000000000000001 /* GRDB */,
 				C1000110000000000000002 /* ZIPFoundation */,
+				C1000110000000000000003 /* WhisperKit */,
 			);
 			productName = OverlayOpus;
 			productReference = A1000030000000000000001 /* OverlayOpus.app */;
@@ -310,6 +313,7 @@
 			packageReferences = (
 				C1000100000000000000001 /* XCRemoteSwiftPackageReference "GRDB.swift" */,
 				C1000100000000000000002 /* XCRemoteSwiftPackageReference "ZIPFoundation" */,
+				C1000100000000000000003 /* XCRemoteSwiftPackageReference "argmax-oss-swift" */,
 			);
 			productRefGroup = A1000050000000000000003 /* Products */;
 			projectDirPath = "";
@@ -401,6 +405,14 @@
 				minimumVersion = 0.9.19;
 			};
 		};
+		C1000100000000000000003 /* XCRemoteSwiftPackageReference "argmax-oss-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/argmaxinc/argmax-oss-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -413,6 +425,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = C1000100000000000000002 /* XCRemoteSwiftPackageReference "ZIPFoundation" */;
 			productName = ZIPFoundation;
+		};
+		C1000110000000000000003 /* WhisperKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C1000100000000000000003 /* XCRemoteSwiftPackageReference "argmax-oss-swift" */;
+			productName = WhisperKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 

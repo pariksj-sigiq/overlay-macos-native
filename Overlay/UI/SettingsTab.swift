@@ -10,8 +10,6 @@ struct SettingsTab: View {
     @ObservedObject private var providerRegistry = ProviderRegistry.shared
     @ObservedObject private var whisperModels = WhisperModelManager.shared
 
-    @State private var whisperModel = WhisperModelManager.ModelChoice.baseEN
-
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
@@ -55,19 +53,29 @@ struct SettingsTab: View {
                 }
 
                 section("Speech") {
-                    Picker("Whisper model", selection: $whisperModel) {
+                    Picker("WhisperKit model", selection: $whisperModels.selectedModel) {
                         ForEach(WhisperModelManager.ModelChoice.allCases) { model in
-                            Text(model.rawValue).tag(model)
+                            Text(model.label).tag(model)
                         }
                     }
 
                     ProgressView(value: whisperModels.downloadProgress)
                     Button("Download Model") {
                         Task {
-                            try? await whisperModels.downloadIfNeeded(whisperModel)
+                            try? await whisperModels.downloadIfNeeded(whisperModels.selectedModel)
                         }
                     }
                     .disabled(whisperModels.isDownloading)
+
+                    Text(whisperModels.isInstalled(whisperModels.selectedModel) ? "Model installed locally." : "Model downloads locally on first use.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+
+                    if let error = whisperModels.errorMessage {
+                        Text(error)
+                            .font(.system(size: 11))
+                            .foregroundStyle(.red)
+                    }
                 }
 
                 section("Hotkeys") {

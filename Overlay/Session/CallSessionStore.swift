@@ -197,9 +197,13 @@ final class CallSessionStore: ObservableObject {
             transcript = []
             suggestions = []
             contextDocs = try await AppDatabase.shared.contextDocs(sessionID: session.id)
-            status = "Call ready"
+            status = "Loading speech model"
             errorMessage = nil
-            await whisperEngine.start(sessionID: session.id)
+            let speechModel = WhisperModelManager.shared.selectedModel
+            try await whisperEngine.start(sessionID: session.id,
+                                          modelName: speechModel.modelName,
+                                          downloadBase: WhisperModelManager.shared.modelsDirectory)
+            status = "Call ready"
             for url in documents {
                 ingestDocument(url: url)
             }
