@@ -277,6 +277,86 @@ struct ProviderConfigRecord: Codable, FetchableRecord, PersistableRecord, Identi
     }
 }
 
+struct AnalysisEventRecord: Codable, FetchableRecord, PersistableRecord, Identifiable, Equatable {
+    static let databaseTableName = "analysis_event"
+
+    var id: String
+    var sessionID: String
+    var ts: Int64
+    var kind: String
+    var payloadJSON: Data
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case sessionID = "session_id"
+        case ts
+        case kind
+        case payloadJSON = "payload_json"
+    }
+}
+
+struct MemoryItemRecord: Codable, FetchableRecord, PersistableRecord, Identifiable, Equatable {
+    static let databaseTableName = "memory_item"
+
+    var id: String
+    var sessionID: String
+    var ts: Int64
+    var kind: MemoryKind
+    var text: String
+    var sourceTranscriptID: String?
+    var payloadJSON: Data?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case sessionID = "session_id"
+        case ts
+        case kind
+        case text
+        case sourceTranscriptID = "source_transcript_id"
+        case payloadJSON = "payload_json"
+    }
+}
+
+struct PrivacyAuditRecord: Codable, FetchableRecord, PersistableRecord, Identifiable, Equatable {
+    static let databaseTableName = "privacy_audit"
+
+    var id: String
+    var sessionID: String?
+    var ts: Int64
+    var action: String
+    var detail: String
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case sessionID = "session_id"
+        case ts
+        case action
+        case detail
+    }
+}
+
+struct SessionArtifactRecord: Codable, FetchableRecord, PersistableRecord, Identifiable, Equatable {
+    static let databaseTableName = "session_artifact"
+
+    var id: String
+    var sessionID: String
+    var ts: Int64
+    var kind: String
+    var title: String
+    var content: String
+    var payloadJSON: Data?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case sessionID = "session_id"
+        case ts
+        case kind
+        case title
+        case content
+        case payloadJSON = "payload_json"
+    }
+}
+
 struct DetectedQuestion: Identifiable, Equatable {
     var id: String
     var sessionID: String?

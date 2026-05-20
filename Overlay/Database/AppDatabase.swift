@@ -127,6 +127,56 @@ final class AppDatabase {
         }
     }
 
+    func insertAnalysisEvent(_ event: AnalysisEventRecord) async throws -> AnalysisEventRecord {
+        try await write { db in
+            try event.insert(db)
+            return event
+        }
+    }
+
+    func insertMemoryItem(_ item: MemoryItemRecord) async throws -> MemoryItemRecord {
+        try await write { db in
+            try item.insert(db)
+            return item
+        }
+    }
+
+    func memoryItems(sessionID: String) async throws -> [MemoryItemRecord] {
+        try await read { db in
+            try MemoryItemRecord
+                .filter(Column("session_id") == sessionID)
+                .order(Column("ts").desc)
+                .fetchAll(db)
+        }
+    }
+
+    func insertPrivacyAudit(_ audit: PrivacyAuditRecord) async throws -> PrivacyAuditRecord {
+        try await write { db in
+            try audit.insert(db)
+            return audit
+        }
+    }
+
+    func insertSessionArtifact(_ artifact: SessionArtifactRecord) async throws -> SessionArtifactRecord {
+        try await write { db in
+            try artifact.insert(db)
+            return artifact
+        }
+    }
+
+    func sessionArtifacts(sessionID: String, kind: String? = nil) async throws -> [SessionArtifactRecord] {
+        try await read { db in
+            var request = SessionArtifactRecord
+                .filter(Column("session_id") == sessionID)
+            if let kind {
+                request = request.filter(Column("kind") == kind)
+            }
+            return try request
+                .order(Column("ts").desc)
+                .fetchAll(db)
+        }
+    }
+
     func fetchProviderConfigs() async throws -> [ProviderConfigRecord] {
         try await read { db in
             try ProviderConfigRecord

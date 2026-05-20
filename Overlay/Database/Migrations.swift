@@ -76,6 +76,56 @@ enum Migrations {
             try createFTSTriggers(db)
         }
 
+        migrator.registerMigration("addIntelligenceSchema") { db in
+            try db.create(table: "analysis_event") { t in
+                t.column("id", .text).primaryKey()
+                t.column("session_id", .text)
+                    .notNull()
+                    .references("call_session", onDelete: .cascade)
+                t.column("ts", .integer).notNull()
+                t.column("kind", .text).notNull()
+                t.column("payload_json", .blob).notNull()
+            }
+
+            try db.create(table: "memory_item") { t in
+                t.column("id", .text).primaryKey()
+                t.column("session_id", .text)
+                    .notNull()
+                    .references("call_session", onDelete: .cascade)
+                t.column("ts", .integer).notNull()
+                t.column("kind", .text).notNull()
+                t.column("text", .text).notNull()
+                t.column("source_transcript_id", .text)
+                t.column("payload_json", .blob)
+            }
+
+            try db.create(table: "privacy_audit") { t in
+                t.column("id", .text).primaryKey()
+                t.column("session_id", .text)
+                    .references("call_session", onDelete: .cascade)
+                t.column("ts", .integer).notNull()
+                t.column("action", .text).notNull()
+                t.column("detail", .text).notNull()
+            }
+
+            try db.create(table: "session_artifact") { t in
+                t.column("id", .text).primaryKey()
+                t.column("session_id", .text)
+                    .notNull()
+                    .references("call_session", onDelete: .cascade)
+                t.column("ts", .integer).notNull()
+                t.column("kind", .text).notNull()
+                t.column("title", .text).notNull()
+                t.column("content", .text).notNull()
+                t.column("payload_json", .blob)
+            }
+
+            try db.create(index: "idx_analysis_session_ts", on: "analysis_event", columns: ["session_id", "ts"])
+            try db.create(index: "idx_memory_session_kind", on: "memory_item", columns: ["session_id", "kind"])
+            try db.create(index: "idx_privacy_audit_session_ts", on: "privacy_audit", columns: ["session_id", "ts"])
+            try db.create(index: "idx_artifact_session_kind", on: "session_artifact", columns: ["session_id", "kind"])
+        }
+
         return migrator
     }
 
