@@ -117,6 +117,10 @@ final class CallSessionStore: ObservableObject {
         }
     }
 
+    func recordPrivacyModeChange(_ rawValue: String) {
+        audit("privacy_mode_change", detail: rawValue)
+    }
+
     func ingestDocument(url: URL) {
         guard let providerID, let modelID else { return }
         let sessionID = activeSession?.id
@@ -190,6 +194,10 @@ final class CallSessionStore: ObservableObject {
         AnswerTone(rawValue: UserDefaults.standard.string(forKey: "overlay.answerTone") ?? "") ?? .direct
     }
 
+    private var privacyMode: PrivacyMode {
+        PrivacyMode(rawValue: UserDefaults.standard.string(forKey: "overlay.privacyMode") ?? "") ?? .providerAssisted
+    }
+
     private func suggest(trigger: SuggestionEngine.Trigger,
                          sessionID: String,
                          providerID: String,
@@ -202,6 +210,17 @@ final class CallSessionStore: ObservableObject {
                                                  contextDocs: contextDocs,
                                                  transcriptTail: transcript,
                                                  memoryItems: memoryItems)
+
+        if privacyMode == .localOnly {
+            publishLocalSuggestion(trigger: trigger,
+                                   sessionID: sessionID,
+                                   analysis: analysis,
+                                   grounding: grounding)
+            audit("provider_request_blocked", detail: "localOnly")
+            return
+        }
+
+        audit("provider_request_started", detail: trigger.questionText)
         await suggestionEngine.suggest(trigger: trigger,
                                        sessionID: sessionID,
                                        brief: brief,
@@ -214,6 +233,67 @@ final class CallSessionStore: ObservableObject {
                                        tone: answerTone,
                                        contextDocs: contextDocs,
                                        transcriptTail: transcript)
+    }
+
+    private func publishLocalSuggestion(trigger: SuggestionEngine.Trigger,
+                                        sessionID: String,
+                                        analysis: QuestionAnalysis,
+                                        grounding: [GroundingSnippet]) {
+        let nextThought: String
+        switch analysis.recommendedMove {
+        case .answerDirectly:
+            nextThought = "Answer directly, then name the strongest support."
+        case .clarify:
+            nextThought = "Clarify the premise before answering."
+        case .challengePremise:
+            nextThought = "Challenge the framing gently before giving a narrow answer."
+        case .citeSource:
+            nextThought = "Use the available source and mark uncertainty."
+        case .deferAnswer:
+            nextThought = "Defer until a source is available."
+        }
+
+        let bullets = [
+            analysis.parts.first.map { "Address: \($0)" },
+            analysis.assumptions.first.map { "Assumption to check: \($0)" },
+            analysis.traps.first.map { "Watch for loaded framing: \($0)" }
+        ].compactMap { $0 }
+
+        let card = SuggestionCard(nextThought: nextThought,
+                                  answerBullets: bullets.isEmpty ? ["No provider call was made in local-only mode."] : bullets,
+                                  caveat: grounding.isEmpty ? "No local sources matched yet." : nil,
+                                  citations: grounding,
+                                  confidence: analysis.confidence)
+
+        let update = SuggestionUpdate(id: UUID().uuidString,
+                                      sessionID: sessionID,
+                                      ts: Date.unixMilliseconds,
+                                      kind: suggestionKind(for: trigger),
+                                      prompt: trigger.questionText,
+                                      text: nextThought,
+                                      card: card,
+                                      isFinal: true,
+                                      errorMessage: nil)
+        suggestions.append(update)
+    }
+
+    private func suggestionKind(for trigger: SuggestionEngine.Trigger) -> SuggestionKind {
+        switch trigger {
+        case .detected: return .auto
+        case .manual: return .manual
+        case .hotkey: return .hotkey
+        }
+    }
+
+    private func audit(_ action: String, detail: String = "") {
+        let record = PrivacyAuditRecord(id: UUID().uuidString,
+                                        sessionID: activeSession?.id,
+                                        ts: Date.unixMilliseconds,
+                                        action: action,
+                                        detail: detail)
+        Task {
+            try? await AppDatabase.shared.insertPrivacyAudit(record)
+        }
     }
 
     private func processLocalIntelligence(for chunk: TranscriptChunkRecord) {
@@ -270,6 +350,7 @@ final class CallSessionStore: ObservableObject {
         do {
             try await AppDatabase.shared.insertCallSession(session)
             activeSession = session
+            audit("session_start", detail: title)
             self.brief = brief
             self.providerID = providerID
             self.modelID = modelID
@@ -304,6 +385,7 @@ final class CallSessionStore: ObservableObject {
         await conversationMemory.reset()
 
         if let session = activeSession {
+            audit("session_stop", detail: session.title)
             try? await AppDatabase.shared.finishCallSession(id: session.id, endedAt: Date())
         }
 
@@ -325,6 +407,7 @@ final class CallSessionStore: ObservableObject {
             try await audioCapturer.start()
             isRecording = true
             status = "Recording"
+            audit("recording_start")
             errorMessage = nil
 
             audioTask?.cancel()
@@ -348,6 +431,7 @@ final class CallSessionStore: ObservableObject {
         audioTask = nil
         await audioCapturer.stop()
         isRecording = false
+        audit("recording_stop")
         if activeSession != nil {
             status = "Paused"
         }

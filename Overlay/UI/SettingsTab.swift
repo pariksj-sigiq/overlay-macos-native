@@ -9,10 +9,36 @@ struct SettingsTab: View {
     @ObservedObject private var focusStore = FocusModeStore.shared
     @ObservedObject private var providerRegistry = ProviderRegistry.shared
     @ObservedObject private var whisperModels = WhisperModelManager.shared
+    @AppStorage("overlay.answerMode") private var answerModeRaw = AnswerMode.concise.rawValue
+    @AppStorage("overlay.answerTone") private var answerToneRaw = AnswerTone.direct.rawValue
+    @AppStorage("overlay.privacyMode") private var privacyModeRaw = PrivacyMode.providerAssisted.rawValue
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
+                section("Intelligence") {
+                    Picker("Answer mode", selection: $answerModeRaw) {
+                        ForEach(AnswerMode.allCases) { mode in
+                            Text(mode.rawValue).tag(mode.rawValue)
+                        }
+                    }
+
+                    Picker("Tone", selection: $answerToneRaw) {
+                        ForEach(AnswerTone.allCases) { tone in
+                            Text(tone.rawValue).tag(tone.rawValue)
+                        }
+                    }
+
+                    Picker("Privacy", selection: $privacyModeRaw) {
+                        ForEach(PrivacyMode.allCases) { mode in
+                            Text(mode.rawValue).tag(mode.rawValue)
+                        }
+                    }
+                    .onChange(of: privacyModeRaw) { _, value in
+                        CallSessionStore.shared.recordPrivacyModeChange(value)
+                    }
+                }
+
                 section("Focus Mode") {
                     Picker("Mode", selection: $focusStore.mode) {
                         ForEach(FocusMode.allCases) { mode in

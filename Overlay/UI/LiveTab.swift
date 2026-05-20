@@ -7,6 +7,7 @@ import SwiftUI
 
 struct LiveTab: View {
     @ObservedObject private var sessionStore = CallSessionStore.shared
+    @AppStorage("overlay.privacyMode") private var privacyModeRaw = PrivacyMode.providerAssisted.rawValue
 
     @State private var isPaused = false
     @State private var autoScroll = true
@@ -46,6 +47,13 @@ struct LiveTab: View {
             Text(sessionStore.status)
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
+
+            Text(privacyModeRaw == PrivacyMode.localOnly.rawValue ? "LOCAL ONLY" : "PROVIDER ASSISTED")
+                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .padding(.horizontal, 6)
+                .padding(.vertical, 3)
+                .background(Capsule().fill(privacyModeRaw == PrivacyMode.localOnly.rawValue ? Color.green.opacity(0.15) : Color.blue.opacity(0.15)))
+                .foregroundStyle(privacyModeRaw == PrivacyMode.localOnly.rawValue ? Color.green : Color.blue)
 
             Spacer()
 
