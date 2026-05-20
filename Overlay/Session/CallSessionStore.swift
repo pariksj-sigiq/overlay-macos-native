@@ -17,6 +17,8 @@ final class CallSessionStore: ObservableObject {
     @Published private(set) var questionAnalyses: [QuestionAnalysis] = []
     @Published private(set) var memoryItems: [MemoryItemRecord] = []
     @Published private(set) var suggestions: [SuggestionUpdate] = []
+    @Published private(set) var prepArtifacts: [SessionArtifactRecord] = []
+    @Published private(set) var reviewArtifacts: [SessionArtifactRecord] = []
     @Published private(set) var isRecording = false
     @Published private(set) var status = "Idle"
     @Published var errorMessage: String?
@@ -28,6 +30,7 @@ final class CallSessionStore: ObservableObject {
     private let conversationMemory = ConversationMemory()
     private let groundingEngine = GroundingEngine()
     private let suggestionEngine = SuggestionEngine()
+    private let prepReviewEngine = PrepReviewEngine()
     private let documentIngestor = DocumentIngestor.shared
 
     private var cancellables = Set<AnyCancellable>()
@@ -119,6 +122,64 @@ final class CallSessionStore: ObservableObject {
 
     func recordPrivacyModeChange(_ rawValue: String) {
         audit("privacy_mode_change", detail: rawValue)
+    }
+
+    func generatePrep() {
+        guard let session = activeSession else { return }
+
+        Task {
+            do {
+                let artifact = try await prepReviewEngine.makePrep(sessionID: session.id,
+                                                                    brief: brief,
+                                                                    docs: contextDocs,
+                                                                    providerID: providerID,
+                                                                    modelID: modelID,
+                                                                    privacyMode: privacyMode)
+                prepArtifacts.insert(artifact, at: 0)
+                audit("prep_generated", detail: artifact.id)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    func generateReview(for sessionID: String? = nil) {
+        Task {
+            do {
+                _ = try await makeReviewArtifact(for: sessionID)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    func makeReviewArtifact(for sessionID: String? = nil) async throws -> SessionArtifactRecord {
+        let session: CallSessionRecord
+        if let activeSession, sessionID == nil || sessionID == activeSession.id {
+            session = activeSession
+        } else if let sessionID, let stored = try await AppDatabase.shared.fetchSession(id: sessionID) {
+            session = stored
+        } else {
+            throw LLMProviderError.invalidConfiguration("No call session selected for review")
+        }
+
+        let transcriptRows = session.id == activeSession?.id
+            ? transcript
+            : try await AppDatabase.shared.transcriptChunks(sessionID: session.id)
+        let suggestionRows = try await AppDatabase.shared.suggestions(sessionID: session.id)
+        let artifact = try await prepReviewEngine.makeReview(session: session,
+                                                              transcript: transcriptRows,
+                                                              suggestions: suggestionRows,
+                                                              providerID: session.providerID ?? providerID,
+                                                              modelID: session.modelID ?? modelID,
+                                                              privacyMode: privacyMode)
+        reviewArtifacts.insert(artifact, at: 0)
+        audit("review_generated", detail: artifact.id)
+        return artifact
+    }
+
+    func reviewArtifacts(for sessionID: String) async throws -> [SessionArtifactRecord] {
+        try await AppDatabase.shared.sessionArtifacts(sessionID: sessionID, kind: "review")
     }
 
     func ingestDocument(url: URL) {
@@ -324,7 +385,7 @@ final class CallSessionStore: ObservableObject {
                                               text: payload.text,
                                               sourceTranscriptID: payload.sourceTranscriptID,
                                               payloadJSON: data)
-                try? await AppDatabase.shared.insertMemoryItem(record)
+                _ = try? await AppDatabase.shared.insertMemoryItem(record)
                 await MainActor.run {
                     self.memoryItems.insert(record, at: 0)
                 }
@@ -360,6 +421,8 @@ final class CallSessionStore: ObservableObject {
             await conversationMemory.reset()
             suggestions = []
             contextDocs = try await AppDatabase.shared.contextDocs(sessionID: session.id)
+            prepArtifacts = try await AppDatabase.shared.sessionArtifacts(sessionID: session.id, kind: "prep")
+            reviewArtifacts = try await AppDatabase.shared.sessionArtifacts(sessionID: session.id, kind: "review")
             status = "Loading speech model"
             errorMessage = nil
             let speechModel = WhisperModelManager.shared.selectedModel
@@ -396,6 +459,8 @@ final class CallSessionStore: ObservableObject {
         contextDocs = []
         questionAnalyses = []
         memoryItems = []
+        prepArtifacts = []
+        reviewArtifacts = []
         status = "Idle"
     }
 

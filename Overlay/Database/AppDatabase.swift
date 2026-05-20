@@ -120,10 +120,28 @@ final class AppDatabase {
         }
     }
 
+    func transcriptChunks(sessionID: String) async throws -> [TranscriptChunkRecord] {
+        try await read { db in
+            try TranscriptChunkRecord
+                .filter(TranscriptChunkRecord.Columns.sessionID == sessionID)
+                .order(TranscriptChunkRecord.Columns.ts.asc)
+                .fetchAll(db)
+        }
+    }
+
     func insertSuggestion(_ suggestion: SuggestionRecord) async throws -> SuggestionRecord {
         try await write { db in
             try suggestion.insert(db)
             return suggestion
+        }
+    }
+
+    func suggestions(sessionID: String) async throws -> [SuggestionRecord] {
+        try await read { db in
+            try SuggestionRecord
+                .filter(SuggestionRecord.Columns.sessionID == sessionID)
+                .order(SuggestionRecord.Columns.ts.asc)
+                .fetchAll(db)
         }
     }
 

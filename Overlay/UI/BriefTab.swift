@@ -87,6 +87,14 @@ struct BriefTab: View {
 
                     Spacer()
                     Button {
+                        sessionStore.generatePrep()
+                    } label: {
+                        Label("Generate Prep", systemImage: "sparkles")
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(sessionStore.activeSession == nil)
+
+                    Button {
                         sessionStore.startCall(title: title,
                                                brief: brief,
                                                providerID: providerID,
@@ -99,6 +107,18 @@ struct BriefTab: View {
                     .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
                               providerID.isEmpty ||
                               modelID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+
+                if !sessionStore.prepArtifacts.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Prep")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.secondary)
+
+                        ForEach(sessionStore.prepArtifacts) { artifact in
+                            artifactCard(artifact)
+                        }
+                    }
                 }
             }
             .padding(14)
@@ -113,5 +133,25 @@ struct BriefTab: View {
 
     private func isAcceptedDocument(_ url: URL) -> Bool {
         ["pdf", "docx", "md", "txt"].contains(url.pathExtension.lowercased())
+    }
+
+    private func artifactCard(_ artifact: SessionArtifactRecord) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(artifact.title)
+                    .font(.system(size: 12, weight: .semibold))
+                Spacer()
+                Text(Date(timeIntervalSince1970: TimeInterval(artifact.ts) / 1000).formatted(date: .omitted, time: .shortened))
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(.tertiary)
+            }
+
+            Text(artifact.content)
+                .font(.system(size: 12))
+                .textSelection(.enabled)
+        }
+        .padding(10)
+        .background(RoundedRectangle(cornerRadius: 8).fill(Color.white.opacity(0.06)))
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.white.opacity(0.08)))
     }
 }
