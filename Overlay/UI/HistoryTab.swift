@@ -26,16 +26,27 @@ struct HistoryTab: View {
                     .textFieldStyle(.roundedBorder)
                     .onSubmit { Task { await search() } }
 
-                List(selection: $selectedResult) {
+                List {
                     ForEach(results) { result in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(result.title)
-                                .font(.system(size: 12, weight: .semibold))
-                            Text(result.kind.rawValue)
-                                .font(.system(size: 10))
-                                .foregroundStyle(.tertiary)
+                        Button {
+                            selectedResult = result
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(result.title)
+                                    .font(.system(size: 12, weight: .semibold))
+                                Text(result.kind.rawValue)
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 4)
+                            .padding(.horizontal, 6)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(selectedResult?.sessionID == result.sessionID ? Color.accentColor.opacity(0.16) : Color.clear)
+                            )
                         }
-                        .tag(Optional(result))
+                        .buttonStyle(.plain)
                     }
                 }
                 .listStyle(.sidebar)
@@ -148,6 +159,10 @@ struct HistoryTab: View {
     private func search() async {
         do {
             results = try await AppDatabase.shared.searchHistory(query: query)
+            if selectedResult == nil || !results.contains(where: { $0.id == selectedResult?.id }) {
+                selectedResult = results.first
+                await loadReviewArtifacts()
+            }
             errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
