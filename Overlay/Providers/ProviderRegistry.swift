@@ -65,6 +65,10 @@ final class ProviderRegistry: ObservableObject {
             let config = try decode(OllamaProviderConfig.self, from: record.configJSON)
             return OllamaProvider(id: record.id, displayName: record.name, config: config)
 
+        case .lmStudio:
+            let config = try decode(LMStudioProviderConfig.self, from: record.configJSON)
+            return LMStudioProvider(id: record.id, displayName: record.name, config: config)
+
         case .bedrock:
             let config = try decode(BedrockProviderConfig.self, from: record.configJSON)
             let accessKeyID = try await secret(config.accessKeyIDSecretName)

@@ -35,6 +35,7 @@ enum SuggestionKind: String, Codable, CaseIterable {
 enum ProviderKind: String, Codable, CaseIterable, Identifiable {
     case azureOpenAI
     case bedrock
+    case lmStudio
     case ollama
     case openAI
 
@@ -44,6 +45,7 @@ enum ProviderKind: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .azureOpenAI: return "Azure OpenAI"
         case .bedrock: return "AWS Bedrock"
+        case .lmStudio: return "LM Studio"
         case .ollama: return "Ollama"
         case .openAI: return "OpenAI"
         }

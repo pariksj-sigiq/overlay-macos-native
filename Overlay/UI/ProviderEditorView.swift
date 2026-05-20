@@ -6,9 +6,9 @@
 import SwiftUI
 
 struct ProviderEditorView: View {
-    @State private var kind: ProviderKind = .ollama
-    @State private var name = "Local Ollama"
-    @State private var endpoint = "http://localhost:11434"
+    @State private var kind: ProviderKind = .lmStudio
+    @State private var name = "Local LM Studio"
+    @State private var endpoint = "http://localhost:1234/v1"
     @State private var deploymentOrModel = ""
     @State private var apiVersion = "2024-02-15-preview"
     @State private var region = "us-east-1"
@@ -28,8 +28,20 @@ struct ProviderEditorView: View {
             }
             .pickerStyle(.segmented)
             .onChange(of: kind) { _, value in
-                if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || name == "Local Ollama" {
-                    name = value.label
+                switch value {
+                case .lmStudio:
+                    name = "Local LM Studio"
+                    endpoint = "http://localhost:1234/v1"
+                case .ollama:
+                    name = "Local Ollama"
+                    endpoint = "http://localhost:11434"
+                case .openAI:
+                    name = "OpenAI"
+                    endpoint = "https://api.openai.com/v1"
+                case .azureOpenAI:
+                    name = "Azure OpenAI"
+                case .bedrock:
+                    name = "AWS Bedrock"
                 }
             }
 
@@ -37,6 +49,12 @@ struct ProviderEditorView: View {
                 .textFieldStyle(.roundedBorder)
 
             switch kind {
+            case .lmStudio:
+                TextField("Base URL", text: $endpoint)
+                    .textFieldStyle(.roundedBorder)
+                Text("Default: http://localhost:1234/v1. Start LM Studio local server and load a model.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
             case .ollama:
                 TextField("Base URL", text: $endpoint)
                     .textFieldStyle(.roundedBorder)
@@ -123,6 +141,9 @@ struct ProviderEditorView: View {
     private func configData(providerID: String) throws -> Data {
         let encoder = JSONEncoder()
         switch kind {
+        case .lmStudio:
+            let url = URL(string: endpoint).flatMap { $0.scheme == nil ? nil : $0 } ?? URL(string: "http://localhost:1234/v1")!
+            return try encoder.encode(LMStudioProviderConfig(baseURL: url, apiKey: "lm-studio"))
         case .ollama:
             let url = URL(string: endpoint).flatMap { $0.scheme == nil ? nil : $0 } ?? URL(string: "http://localhost:11434")
             return try encoder.encode(OllamaProviderConfig(baseURL: url ?? URL(fileURLWithPath: "/")))

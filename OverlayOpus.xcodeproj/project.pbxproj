@@ -29,6 +29,7 @@
 		B1000010000000000000008 /* BedrockProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000008 /* BedrockProvider.swift */; };
 		B1000010000000000000009 /* OllamaProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000009 /* OllamaProvider.swift */; };
 		B1000010000000000000010 /* OpenAIProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000010 /* OpenAIProvider.swift */; };
+		B1000010000000000000033 /* LMStudioProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000033 /* LMStudioProvider.swift */; };
 		B1000010000000000000011 /* SigV4.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000011 /* SigV4.swift */; };
 		B1000010000000000000012 /* SSEParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000012 /* SSEParser.swift */; };
 		B1000010000000000000013 /* AudioRingBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000013 /* AudioRingBuffer.swift */; };
@@ -81,6 +82,7 @@
 		B1000020000000000000008 /* BedrockProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BedrockProvider.swift; sourceTree = "<group>"; };
 		B1000020000000000000009 /* OllamaProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OllamaProvider.swift; sourceTree = "<group>"; };
 		B1000020000000000000010 /* OpenAIProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIProvider.swift; sourceTree = "<group>"; };
+		B1000020000000000000033 /* LMStudioProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LMStudioProvider.swift; sourceTree = "<group>"; };
 		B1000020000000000000011 /* SigV4.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SigV4.swift; sourceTree = "<group>"; };
 		B1000020000000000000012 /* SSEParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSEParser.swift; sourceTree = "<group>"; };
 		B1000020000000000000013 /* AudioRingBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRingBuffer.swift; sourceTree = "<group>"; };
@@ -191,6 +193,7 @@
 				B1000020000000000000006 /* ProviderRegistry.swift */,
 				B1000020000000000000007 /* AzureOpenAIProvider.swift */,
 				B1000020000000000000008 /* BedrockProvider.swift */,
+				B1000020000000000000033 /* LMStudioProvider.swift */,
 				B1000020000000000000009 /* OllamaProvider.swift */,
 				B1000020000000000000010 /* OpenAIProvider.swift */,
 				B1000020000000000000011 /* SigV4.swift */,
@@ -359,6 +362,7 @@
 				B1000010000000000000006 /* ProviderRegistry.swift in Sources */,
 				B1000010000000000000007 /* AzureOpenAIProvider.swift in Sources */,
 				B1000010000000000000008 /* BedrockProvider.swift in Sources */,
+				B1000010000000000000033 /* LMStudioProvider.swift in Sources */,
 				B1000010000000000000009 /* OllamaProvider.swift in Sources */,
 				B1000010000000000000010 /* OpenAIProvider.swift in Sources */,
 				B1000010000000000000011 /* SigV4.swift in Sources */,
