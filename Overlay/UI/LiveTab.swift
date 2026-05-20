@@ -17,8 +17,11 @@ struct LiveTab: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            controls
-                .padding(12)
+            VStack(alignment: .leading, spacing: 8) {
+                controls
+                memoryChips
+            }
+            .padding(12)
             Divider().opacity(0.25)
             transcriptView
         }
@@ -69,6 +72,25 @@ struct LiveTab: View {
             .help("Copy all transcript")
         }
         .font(.system(size: 12))
+    }
+
+    @ViewBuilder
+    private var memoryChips: some View {
+        if !sessionStore.memoryItems.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(Array(sessionStore.memoryItems.prefix(6))) { item in
+                        Text("\(item.kind.rawValue): \(item.text)")
+                            .font(.system(size: 10, weight: .medium))
+                            .lineLimit(1)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Capsule().fill(Color.white.opacity(0.07)))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
     }
 
     private var transcriptView: some View {

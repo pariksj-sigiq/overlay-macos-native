@@ -82,10 +82,49 @@ struct SuggestionsTab: View {
                     .foregroundStyle(.red)
             }
 
-            Text(suggestion.text.isEmpty ? suggestion.prompt : suggestion.text)
-                .font(.system(size: 13))
-                .textSelection(.enabled)
+            if let card = suggestion.card {
+                VStack(alignment: .leading, spacing: 7) {
+                    Text(card.nextThought)
+                        .font(.system(size: 13, weight: .semibold))
+                        .textSelection(.enabled)
+
+                    ForEach(card.answerBullets, id: \.self) { bullet in
+                        Label(bullet, systemImage: "chevron.right")
+                            .font(.system(size: 12))
+                            .textSelection(.enabled)
+                    }
+
+                    if let caveat = card.caveat {
+                        Label(caveat, systemImage: "exclamationmark.triangle")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                    }
+
+                    HStack {
+                        Text(card.confidence.rawValue)
+                            .font(.system(size: 10, weight: .bold))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Color.white.opacity(0.08)))
+                        Spacer()
+                    }
+
+                    ForEach(card.citations) { citation in
+                        Text("[\(citation.sourceKind.rawValue)] \(citation.title): \(citation.excerpt)")
+                            .font(.system(size: 10))
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(2)
+                            .textSelection(.enabled)
+                    }
+                }
                 .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                Text(suggestion.text.isEmpty ? suggestion.prompt : suggestion.text)
+                    .font(.system(size: 13))
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
         .padding(10)
         .background(RoundedRectangle(cornerRadius: 8).fill(Color.white.opacity(0.06)))
