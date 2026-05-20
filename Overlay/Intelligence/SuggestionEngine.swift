@@ -32,6 +32,11 @@ actor SuggestionEngine {
                  brief: String,
                  providerID: String,
                  modelID: String,
+                 analysis: QuestionAnalysis?,
+                 grounding: [GroundingSnippet],
+                 memoryItems: [MemoryItemRecord],
+                 answerMode: AnswerMode,
+                 tone: AnswerTone,
                  contextDocs: [ContextDocRecord],
                  transcriptTail: [TranscriptChunkRecord]) {
         lastTriggers.append(trigger)
@@ -46,6 +51,11 @@ actor SuggestionEngine {
                                 brief: brief,
                                 providerID: providerID,
                                 modelID: modelID,
+                                analysis: analysis,
+                                grounding: grounding,
+                                memoryItems: memoryItems,
+                                answerMode: answerMode,
+                                tone: tone,
                                 contextDocs: contextDocs,
                                 transcriptTail: transcriptTail)
         }
@@ -55,6 +65,11 @@ actor SuggestionEngine {
                         brief: String,
                         providerID: String,
                         modelID: String,
+                        analysis: QuestionAnalysis?,
+                        grounding: [GroundingSnippet],
+                        memoryItems: [MemoryItemRecord],
+                        answerMode: AnswerMode,
+                        tone: AnswerTone,
                         contextDocs: [ContextDocRecord],
                         transcriptTail: [TranscriptChunkRecord]) {
         guard let last = lastTriggers.last else { return }
@@ -63,6 +78,11 @@ actor SuggestionEngine {
                 brief: brief,
                 providerID: providerID,
                 modelID: modelID,
+                analysis: analysis,
+                grounding: grounding,
+                memoryItems: memoryItems,
+                answerMode: answerMode,
+                tone: tone,
                 contextDocs: contextDocs,
                 transcriptTail: transcriptTail)
     }
@@ -77,6 +97,11 @@ actor SuggestionEngine {
                                brief: String,
                                providerID: String,
                                modelID: String,
+                               analysis: QuestionAnalysis?,
+                               grounding: [GroundingSnippet],
+                               memoryItems: [MemoryItemRecord],
+                               answerMode: AnswerMode,
+                               tone: AnswerTone,
                                contextDocs: [ContextDocRecord],
                                transcriptTail: [TranscriptChunkRecord]) async {
         let suggestionID = UUID().uuidString
@@ -89,6 +114,11 @@ actor SuggestionEngine {
         }
         let request = promptBuilder.buildRequest(brief: brief,
                                                  question: trigger.questionText,
+                                                 analysis: analysis,
+                                                 grounding: grounding,
+                                                 memoryItems: memoryItems,
+                                                 answerMode: answerMode,
+                                                 tone: tone,
                                                  contextDocs: contextDocs,
                                                  transcriptTail: transcriptTail,
                                                  modelID: modelID)
@@ -102,6 +132,7 @@ actor SuggestionEngine {
                                           kind: kind,
                                           prompt: trigger.questionText,
                                           text: "",
+                                          card: nil,
                                           isFinal: false,
                                           errorMessage: nil))
 
@@ -116,6 +147,7 @@ actor SuggestionEngine {
                                                   kind: kind,
                                                   prompt: trigger.questionText,
                                                   text: accumulated,
+                                                  card: nil,
                                                   isFinal: false,
                                                   errorMessage: nil))
                 case .done:
@@ -137,11 +169,14 @@ actor SuggestionEngine {
             updates.send(SuggestionUpdate(id: suggestionID,
                                           sessionID: sessionID,
                                           ts: Date.unixMilliseconds,
-                                          kind: kind,
-                                          prompt: trigger.questionText,
-                                          text: accumulated,
-                                          isFinal: true,
-                                          errorMessage: nil))
+                                                  kind: kind,
+                                                  prompt: trigger.questionText,
+                                                  text: accumulated,
+                                                  card: parseCard(text: accumulated,
+                                                                  fallbackConfidence: analysis?.confidence ?? (grounding.isEmpty ? .needsSource : .uncertain),
+                                                                  citations: grounding),
+                                                  isFinal: true,
+                                                  errorMessage: nil))
         } catch is CancellationError {
             return
         } catch {
@@ -151,8 +186,35 @@ actor SuggestionEngine {
                                           kind: kind,
                                           prompt: trigger.questionText,
                                           text: accumulated,
+                                          card: accumulated.isEmpty ? nil : parseCard(text: accumulated,
+                                                                                     fallbackConfidence: analysis?.confidence ?? .uncertain,
+                                                                                     citations: grounding),
                                           isFinal: true,
                                           errorMessage: error.localizedDescription))
         }
+    }
+
+    private func parseCard(text: String,
+                           fallbackConfidence: ConfidenceLabel,
+                           citations: [GroundingSnippet]) -> SuggestionCard {
+        let lines = text.components(separatedBy: .newlines)
+        let next = lines
+            .first(where: { $0.hasPrefix("NEXT:") })?
+            .replacingOccurrences(of: "NEXT:", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let bullets = lines
+            .filter { $0.trimmingCharacters(in: .whitespaces).hasPrefix("-") }
+            .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: "- \t")) }
+            .filter { !$0.isEmpty }
+        let caveat = lines
+            .first(where: { $0.hasPrefix("CAVEAT:") })?
+            .replacingOccurrences(of: "CAVEAT:", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return SuggestionCard(nextThought: next.isEmpty ? String(text.prefix(140)) : next,
+                              answerBullets: bullets.isEmpty ? [String(text.prefix(240))] : bullets,
+                              caveat: caveat == "none" ? nil : caveat,
+                              citations: citations,
+                              confidence: fallbackConfidence)
     }
 }

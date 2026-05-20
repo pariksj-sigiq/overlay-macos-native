@@ -387,6 +387,7 @@ struct SuggestionUpdate: Identifiable, Equatable {
     var kind: SuggestionKind
     var prompt: String
     var text: String
+    var card: SuggestionCard? = nil
     var isFinal: Bool
     var errorMessage: String?
 }

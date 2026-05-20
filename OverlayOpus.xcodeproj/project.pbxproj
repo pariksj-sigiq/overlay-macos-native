@@ -42,6 +42,7 @@
 		B1000010000000000000034 /* IntelligenceModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000034 /* IntelligenceModels.swift */; };
 		B1000010000000000000035 /* QuestionAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000035 /* QuestionAnalyzer.swift */; };
 		B1000010000000000000036 /* ConversationMemory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000036 /* ConversationMemory.swift */; };
+		B1000010000000000000037 /* GroundingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000037 /* GroundingEngine.swift */; };
 		B1000010000000000000020 /* DocumentIngestor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000020 /* DocumentIngestor.swift */; };
 		B1000010000000000000021 /* DocxParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000021 /* DocxParser.swift */; };
 		B1000010000000000000022 /* PdfParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000020000000000000022 /* PdfParser.swift */; };
@@ -98,6 +99,7 @@
 		B1000020000000000000034 /* IntelligenceModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntelligenceModels.swift; sourceTree = "<group>"; };
 		B1000020000000000000035 /* QuestionAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuestionAnalyzer.swift; sourceTree = "<group>"; };
 		B1000020000000000000036 /* ConversationMemory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConversationMemory.swift; sourceTree = "<group>"; };
+		B1000020000000000000037 /* GroundingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroundingEngine.swift; sourceTree = "<group>"; };
 		B1000020000000000000020 /* DocumentIngestor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentIngestor.swift; sourceTree = "<group>"; };
 		B1000020000000000000021 /* DocxParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocxParser.swift; sourceTree = "<group>"; };
 		B1000020000000000000022 /* PdfParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PdfParser.swift; sourceTree = "<group>"; };
@@ -233,6 +235,7 @@
 				B1000020000000000000034 /* IntelligenceModels.swift */,
 				B1000020000000000000035 /* QuestionAnalyzer.swift */,
 				B1000020000000000000036 /* ConversationMemory.swift */,
+				B1000020000000000000037 /* GroundingEngine.swift */,
 				B1000020000000000000018 /* SuggestionEngine.swift */,
 				B1000020000000000000019 /* PromptBuilder.swift */,
 			);
@@ -384,6 +387,7 @@
 				B1000010000000000000034 /* IntelligenceModels.swift in Sources */,
 				B1000010000000000000035 /* QuestionAnalyzer.swift in Sources */,
 				B1000010000000000000036 /* ConversationMemory.swift in Sources */,
+				B1000010000000000000037 /* GroundingEngine.swift in Sources */,
 				B1000010000000000000018 /* SuggestionEngine.swift in Sources */,
 				B1000010000000000000019 /* PromptBuilder.swift in Sources */,
 				B1000010000000000000020 /* DocumentIngestor.swift in Sources */,

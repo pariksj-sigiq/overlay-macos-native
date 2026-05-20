@@ -26,6 +26,7 @@ final class CallSessionStore: ObservableObject {
     private let questionDetector = QuestionDetector()
     private let questionAnalyzer = QuestionAnalyzer()
     private let conversationMemory = ConversationMemory()
+    private let groundingEngine = GroundingEngine()
     private let suggestionEngine = SuggestionEngine()
     private let documentIngestor = DocumentIngestor.shared
 
@@ -83,13 +84,10 @@ final class CallSessionStore: ObservableObject {
         }
 
         Task {
-            await suggestionEngine.suggest(trigger: .manual(question),
-                                           sessionID: session.id,
-                                           brief: brief,
-                                           providerID: providerID,
-                                           modelID: modelID,
-                                           contextDocs: contextDocs,
-                                           transcriptTail: transcript)
+            await suggest(trigger: .manual(question),
+                          sessionID: session.id,
+                          providerID: providerID,
+                          modelID: modelID)
         }
     }
 
@@ -105,6 +103,15 @@ final class CallSessionStore: ObservableObject {
                                                   brief: brief,
                                                   providerID: providerID,
                                                   modelID: modelID,
+                                                  analysis: questionAnalyses.last,
+                                                  grounding: groundingEngine.snippets(question: transcript.last?.text ?? "",
+                                                                                     brief: brief,
+                                                                                     contextDocs: contextDocs,
+                                                                                     transcriptTail: transcript,
+                                                                                     memoryItems: memoryItems),
+                                                  memoryItems: memoryItems,
+                                                  answerMode: answerMode,
+                                                  tone: answerTone,
                                                   contextDocs: contextDocs,
                                                   transcriptTail: transcript)
         }
@@ -154,13 +161,10 @@ final class CallSessionStore: ObservableObject {
                     return
                 }
                 Task {
-                    await self.suggestionEngine.suggest(trigger: .detected(question),
-                                                        sessionID: session.id,
-                                                        brief: self.brief,
-                                                        providerID: providerID,
-                                                        modelID: modelID,
-                                                        contextDocs: self.contextDocs,
-                                                        transcriptTail: self.transcript)
+                    await self.suggest(trigger: .detected(question),
+                                       sessionID: session.id,
+                                       providerID: providerID,
+                                       modelID: modelID)
                 }
             }
             .store(in: &cancellables)
@@ -176,6 +180,40 @@ final class CallSessionStore: ObservableObject {
                 }
             }
             .store(in: &cancellables)
+    }
+
+    private var answerMode: AnswerMode {
+        AnswerMode(rawValue: UserDefaults.standard.string(forKey: "overlay.answerMode") ?? "") ?? .concise
+    }
+
+    private var answerTone: AnswerTone {
+        AnswerTone(rawValue: UserDefaults.standard.string(forKey: "overlay.answerTone") ?? "") ?? .direct
+    }
+
+    private func suggest(trigger: SuggestionEngine.Trigger,
+                         sessionID: String,
+                         providerID: String,
+                         modelID: String) async {
+        let question = trigger.questionText
+        let analysis = questionAnalyses.last { $0.question == question } ??
+            questionAnalyzer.analyze(question: question, context: transcript)
+        let grounding = groundingEngine.snippets(question: question,
+                                                 brief: brief,
+                                                 contextDocs: contextDocs,
+                                                 transcriptTail: transcript,
+                                                 memoryItems: memoryItems)
+        await suggestionEngine.suggest(trigger: trigger,
+                                       sessionID: sessionID,
+                                       brief: brief,
+                                       providerID: providerID,
+                                       modelID: modelID,
+                                       analysis: analysis,
+                                       grounding: grounding,
+                                       memoryItems: memoryItems,
+                                       answerMode: answerMode,
+                                       tone: answerTone,
+                                       contextDocs: contextDocs,
+                                       transcriptTail: transcript)
     }
 
     private func processLocalIntelligence(for chunk: TranscriptChunkRecord) {
