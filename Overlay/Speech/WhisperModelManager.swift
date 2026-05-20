@@ -109,12 +109,39 @@ final class WhisperModelManager: ObservableObject {
 
     private func installedModelURL(for choice: ModelChoice) -> URL? {
         let prefix = "openai_whisper-\(choice.modelName)"
-        guard let contents = try? fileManager.contentsOfDirectory(at: modelsDirectory,
-                                                                  includingPropertiesForKeys: nil,
-                                                                  options: [.skipsHiddenFiles]) else {
+        guard let enumerator = fileManager.enumerator(at: modelsDirectory,
+                                                      includingPropertiesForKeys: [.isDirectoryKey],
+                                                      options: [.skipsHiddenFiles]) else {
             return nil
         }
-        return contents.first { $0.lastPathComponent.hasPrefix(prefix) }
+
+        for case let url as URL in enumerator {
+            guard url.lastPathComponent.hasPrefix(prefix),
+                  isUsableWhisperKitModel(at: url) else {
+                continue
+            }
+            return url
+        }
+
+        return nil
+    }
+
+    private func isUsableWhisperKitModel(at url: URL) -> Bool {
+        guard (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true else {
+            return false
+        }
+
+        let requiredPaths = [
+            "AudioEncoder.mlmodelc/weights/weight.bin",
+            "MelSpectrogram.mlmodelc/weights/weight.bin",
+            "TextDecoder.mlmodelc/weights/weight.bin",
+            "config.json",
+            "generation_config.json"
+        ]
+
+        return requiredPaths.allSatisfy { relativePath in
+            fileManager.fileExists(atPath: url.appendingPathComponent(relativePath).path)
+        }
     }
 
     private func ensureModelsDirectory() throws {

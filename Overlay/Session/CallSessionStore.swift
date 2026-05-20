@@ -423,9 +423,11 @@ final class CallSessionStore: ObservableObject {
             contextDocs = try await AppDatabase.shared.contextDocs(sessionID: session.id)
             prepArtifacts = try await AppDatabase.shared.sessionArtifacts(sessionID: session.id, kind: "prep")
             reviewArtifacts = try await AppDatabase.shared.sessionArtifacts(sessionID: session.id, kind: "review")
-            status = "Loading speech model"
+            status = "Preparing speech model"
             errorMessage = nil
             let speechModel = WhisperModelManager.shared.selectedModel
+            _ = try await WhisperModelManager.shared.downloadIfNeeded(speechModel)
+            status = "Loading speech model"
             try await whisperEngine.start(sessionID: session.id,
                                           modelName: speechModel.modelName,
                                           downloadBase: WhisperModelManager.shared.modelsDirectory)

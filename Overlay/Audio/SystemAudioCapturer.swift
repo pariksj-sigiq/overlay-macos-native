@@ -83,7 +83,7 @@ actor SystemAudioCapturer {
         } catch let error as SystemAudioCaptureError {
             throw error
         } catch {
-            if "\(error)".localizedCaseInsensitiveContains("permission") {
+            if Self.isPermissionDenied(error) {
                 throw SystemAudioCaptureError.permissionDenied
             }
             throw error
@@ -110,6 +110,12 @@ actor SystemAudioCapturer {
 
     private func emit(_ samples: [Float]) {
         continuation?.yield(samples)
+    }
+
+    private static func isPermissionDenied(_ error: Error) -> Bool {
+        let description = "\(error) \(error.localizedDescription)"
+        return ["permission", "tcc", "declined", "screen capture", "display capture", "window capture"]
+            .contains { description.localizedCaseInsensitiveContains($0) }
     }
 }
 

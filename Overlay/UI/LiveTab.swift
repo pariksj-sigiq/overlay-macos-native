@@ -30,6 +30,7 @@ struct LiveTab: View {
         }
     }
 
+    @ViewBuilder
     private var controls: some View {
         HStack(spacing: 12) {
             Button(action: sessionStore.toggleRecording) {
@@ -72,6 +73,13 @@ struct LiveTab: View {
             .help("Copy all transcript")
         }
         .font(.system(size: 12))
+        if let error = sessionStore.errorMessage {
+            Text(error)
+                .font(.system(size: 11))
+                .foregroundStyle(.red)
+                .lineLimit(2)
+                .textSelection(.enabled)
+        }
     }
 
     @ViewBuilder
