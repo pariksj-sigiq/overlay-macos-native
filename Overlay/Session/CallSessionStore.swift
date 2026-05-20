@@ -14,6 +14,8 @@ final class CallSessionStore: ObservableObject {
 
     @Published private(set) var activeSession: CallSessionRecord?
     @Published private(set) var transcript: [TranscriptChunkRecord] = []
+    @Published private(set) var questionAnalyses: [QuestionAnalysis] = []
+    @Published private(set) var memoryItems: [MemoryItemRecord] = []
     @Published private(set) var suggestions: [SuggestionUpdate] = []
     @Published private(set) var isRecording = false
     @Published private(set) var status = "Idle"
@@ -22,6 +24,8 @@ final class CallSessionStore: ObservableObject {
     private let audioCapturer = SystemAudioCapturer()
     private let whisperEngine = WhisperEngine()
     private let questionDetector = QuestionDetector()
+    private let questionAnalyzer = QuestionAnalyzer()
+    private let conversationMemory = ConversationMemory()
     private let suggestionEngine = SuggestionEngine()
     private let documentIngestor = DocumentIngestor.shared
 
@@ -133,6 +137,7 @@ final class CallSessionStore: ObservableObject {
             .sink { [weak self] chunk in
                 guard let self else { return }
                 self.transcript.append(chunk)
+                self.processLocalIntelligence(for: chunk)
                 Task {
                     try? await AppDatabase.shared.insertTranscriptChunk(chunk)
                 }
@@ -173,6 +178,42 @@ final class CallSessionStore: ObservableObject {
             .store(in: &cancellables)
     }
 
+    private func processLocalIntelligence(for chunk: TranscriptChunkRecord) {
+        let analysis = questionAnalyzer.analyze(question: chunk.text, context: transcript)
+        if chunk.text.contains("?") || analysis.parts.count > 1 || !analysis.traps.isEmpty {
+            questionAnalyses.append(analysis)
+            if let data = try? JSONEncoder().encode(analysis) {
+                Task {
+                    try? await AppDatabase.shared.insertAnalysisEvent(
+                        AnalysisEventRecord(id: UUID().uuidString,
+                                            sessionID: chunk.sessionID,
+                                            ts: Date.unixMilliseconds,
+                                            kind: "question",
+                                            payloadJSON: data)
+                    )
+                }
+            }
+        }
+
+        Task {
+            let payloads = await conversationMemory.extract(from: chunk)
+            for payload in payloads {
+                let data = try? JSONEncoder().encode(payload)
+                let record = MemoryItemRecord(id: UUID().uuidString,
+                                              sessionID: chunk.sessionID,
+                                              ts: Date.unixMilliseconds,
+                                              kind: payload.kind,
+                                              text: payload.text,
+                                              sourceTranscriptID: payload.sourceTranscriptID,
+                                              payloadJSON: data)
+                try? await AppDatabase.shared.insertMemoryItem(record)
+                await MainActor.run {
+                    self.memoryItems.insert(record, at: 0)
+                }
+            }
+        }
+    }
+
     // MARK: - Lifecycle
 
     private func startCallAsync(title: String,
@@ -195,6 +236,9 @@ final class CallSessionStore: ObservableObject {
             self.providerID = providerID
             self.modelID = modelID
             transcript = []
+            questionAnalyses = []
+            memoryItems = []
+            await conversationMemory.reset()
             suggestions = []
             contextDocs = try await AppDatabase.shared.contextDocs(sessionID: session.id)
             status = "Loading speech model"
@@ -219,6 +263,7 @@ final class CallSessionStore: ObservableObject {
         await whisperEngine.stop()
         await suggestionEngine.stop()
         questionDetector.reset()
+        await conversationMemory.reset()
 
         if let session = activeSession {
             try? await AppDatabase.shared.finishCallSession(id: session.id, endedAt: Date())
@@ -229,6 +274,8 @@ final class CallSessionStore: ObservableObject {
         modelID = nil
         brief = ""
         contextDocs = []
+        questionAnalyses = []
+        memoryItems = []
         status = "Idle"
     }
 
