@@ -2,7 +2,7 @@
 //  NotesStore.swift
 //  Overlay
 //
-//  Persists the overlay note text to
+//  Persists encrypted overlay note text to
 //  ~/Library/Application Support/Overlay/notes.txt
 //  Autosaves on change with a 0.5s debounce.
 //
@@ -66,7 +66,7 @@ final class NotesStore: ObservableObject {
                                                 attributes: nil)
             } catch {
                 #if DEBUG
-                print("NotesStore: failed to create storage dir: \(error)")
+                print("NotesStore: failed to create storage dir")
                 #endif
             }
         }
@@ -77,8 +77,12 @@ final class NotesStore: ObservableObject {
     private func loadFromDisk() {
         let url = storageURL
         if let data = try? Data(contentsOf: url),
-           let str = String(data: data, encoding: .utf8) {
-            self.text = str
+           let storedText = String(data: data, encoding: .utf8) {
+            let protector = LocalDataProtector.shared
+            self.text = protector.decryptString(storedText)
+            if !protector.isEncryptedString(storedText), !storedText.isEmpty {
+                saveAsync(self.text)
+            }
         } else {
             self.text = ""
         }
@@ -104,12 +108,13 @@ final class NotesStore: ObservableObject {
         ioQueue.async { [weak self] in
             guard let self = self else { return }
             self.ensureDirectoryExists()
-            let data = Data(value.utf8)
             do {
+                let encrypted = try LocalDataProtector.shared.encryptString(value)
+                let data = Data(encrypted.utf8)
                 try data.write(to: url, options: [.atomic])
             } catch {
                 #if DEBUG
-                print("NotesStore: failed to write notes: \(error)")
+                print("NotesStore: failed to protect notes")
                 #endif
             }
         }
@@ -122,7 +127,7 @@ final class NotesStore: ObservableObject {
         let value = self.text
         let url = storageURL
         ensureDirectoryExists()
-        let data = Data(value.utf8)
-        try? data.write(to: url, options: [.atomic])
+        guard let encrypted = try? LocalDataProtector.shared.encryptString(value) else { return }
+        try? Data(encrypted.utf8).write(to: url, options: [.atomic])
     }
 }

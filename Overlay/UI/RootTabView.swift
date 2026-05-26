@@ -11,12 +11,18 @@ final class AppCommandStore: ObservableObject {
 
     @Published var focusSuggestionPromptToken = UUID()
     @Published var selectedTab: OverlayTab = .notes
+    @Published var notesScrollCommand: NotesScrollCommand?
 
     private init() {}
 
     func focusSuggestionPrompt() {
         selectedTab = .suggestions
         focusSuggestionPromptToken = UUID()
+    }
+
+    func scrollNotes(_ direction: NotesScrollDirection) {
+        selectedTab = .notes
+        notesScrollCommand = NotesScrollCommand(direction: direction)
     }
 }
 
@@ -65,6 +71,7 @@ struct RootTabView: View {
     @AppStorage("overlay.markdownRender") private var markdownRender: Bool = false
 
     @State private var showingSettings = false
+    @State private var showingShortcutHelp = false
 
     private let minFontSize: Double = 10
     private let maxFontSize: Double = 28
@@ -150,6 +157,16 @@ struct RootTabView: View {
             }
             .buttonStyle(.borderless)
             .help(pinState.isPinned ? "Unpin from top" : "Pin to top")
+
+            Button(action: { showingShortcutHelp.toggle() }) {
+                Image(systemName: "questionmark.circle")
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.borderless)
+            .help("Keyboard shortcuts")
+            .popover(isPresented: $showingShortcutHelp, arrowEdge: .bottom) {
+                ShortcutHelpPopover()
+            }
 
             Button(action: { showingSettings.toggle() }) {
                 Image(systemName: "gearshape")
@@ -305,6 +322,21 @@ struct RootTabView: View {
             Button(action: { markdownRender.toggle() }) { EmptyView() }
                 .keyboardShortcut("m", modifiers: [.command, .shift])
                 .hidden()
+            Button(action: { FocusModeStore.shared.cycle() }) { EmptyView() }
+                .keyboardShortcut("l", modifiers: [.command, .shift])
+                .hidden()
+            Button(action: { commandStore.scrollNotes(.up) }) { EmptyView() }
+                .keyboardShortcut(.upArrow, modifiers: [.command, .option])
+                .hidden()
+            Button(action: { commandStore.scrollNotes(.down) }) { EmptyView() }
+                .keyboardShortcut(.downArrow, modifiers: [.command, .option])
+                .hidden()
+            Button(action: { commandStore.scrollNotes(.left) }) { EmptyView() }
+                .keyboardShortcut(.leftArrow, modifiers: [.command, .option])
+                .hidden()
+            Button(action: { commandStore.scrollNotes(.right) }) { EmptyView() }
+                .keyboardShortcut(.rightArrow, modifiers: [.command, .option])
+                .hidden()
         }
     }
 
@@ -325,6 +357,47 @@ struct RootTabView: View {
         NSApp.keyWindow?.performClose(nil)
         if NSApp.keyWindow == nil {
             NSApp.mainWindow?.performClose(nil)
+        }
+    }
+}
+
+private struct ShortcutHelpPopover: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Shortcuts", systemImage: "keyboard")
+                .font(.system(size: 13, weight: .semibold))
+
+            VStack(alignment: .leading, spacing: 7) {
+                shortcut("⌘⇧\\", "Show / hide overlay")
+                shortcut("⌘⇧L", "Cycle focus mode")
+                shortcut("⌘⌥↑↓←→", "Scroll notes")
+                shortcut("⌘⇧=", "Increase notes font")
+                shortcut("⌘⇧-", "Decrease notes font")
+                shortcut("⌘⇧M", "Toggle markdown")
+                shortcut("⌘⇧R", "Start / stop recording")
+                shortcut("⌘⇧A", "Focus manual ask")
+                shortcut("⌘⇧Q", "Regenerate suggestion")
+                shortcut("⌘⇧T", "Jump to Suggestions")
+                shortcut("⌘⇧B", "Jump to Brief")
+            }
+
+            Text("Privacy hardening is always on; hardware/root-level capture cannot be blocked.")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(14)
+        .frame(width: 260, alignment: .leading)
+    }
+
+    private func shortcut(_ keys: String, _ description: String) -> some View {
+        HStack(spacing: 10) {
+            Text(keys)
+                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                .frame(width: 78, alignment: .leading)
+            Text(description)
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
         }
     }
 }

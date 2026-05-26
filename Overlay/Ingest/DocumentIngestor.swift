@@ -44,7 +44,7 @@ actor DocumentIngestor {
                                       filename: filename,
                                       content: text,
                                       summary: nil)
-        try await AppDatabase.shared.insertContextDoc(record)
+        _ = try await AppDatabase.shared.insertContextDoc(record)
 
         Task.detached(priority: .utility) {
             await self.summarize(record: record, providerID: providerID, modelID: modelID)
@@ -95,7 +95,7 @@ actor DocumentIngestor {
                                                                  updatedAt: Date())
         } catch {
             #if DEBUG
-            print("DocumentIngestor: summary failed: \(error)")
+            print("DocumentIngestor: summary failed")
             #endif
         }
     }

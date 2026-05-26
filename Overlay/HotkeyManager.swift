@@ -51,6 +51,10 @@ final class HotkeyManager {
         case regenerate       = 10
         case jumpSuggestions  = 11
         case jumpBrief        = 12
+        case scrollNotesUp    = 13
+        case scrollNotesDown  = 14
+        case scrollNotesLeft  = 15
+        case scrollNotesRight = 16
     }
 
     /// Four-char code used as `EventHotKeyID.signature`. Carbon convention: a stable
@@ -76,6 +80,7 @@ final class HotkeyManager {
     private let regenerate: () -> Void
     private let jumpSuggestions: () -> Void
     private let jumpBrief: () -> Void
+    private let scrollNotes: (NotesScrollDirection) -> Void
 
     // MARK: - Init / deinit
 
@@ -86,13 +91,15 @@ final class HotkeyManager {
          manualAsk: @escaping () -> Void = {},
          regenerate: @escaping () -> Void = {},
          jumpSuggestions: @escaping () -> Void = {},
-         jumpBrief: @escaping () -> Void = {}) {
+         jumpBrief: @escaping () -> Void = {},
+         scrollNotes: @escaping (NotesScrollDirection) -> Void = { _ in }) {
         self.toggleVisibility = toggleVisibility
         self.toggleRecording = toggleRecording
         self.manualAsk = manualAsk
         self.regenerate = regenerate
         self.jumpSuggestions = jumpSuggestions
         self.jumpBrief = jumpBrief
+        self.scrollNotes = scrollNotes
         _ = FocusModeStore.shared  // prime singleton
         _ = NotesStore.shared
         seedDefaultsIfNeeded()
@@ -171,6 +178,7 @@ final class HotkeyManager {
 
     private func registerAllHotkeys() {
         let shiftCmd: UInt32 = UInt32(cmdKey | shiftKey)
+        let optionCmd: UInt32 = UInt32(cmdKey | optionKey)
 
         // ⌘⇧\  — toggle visibility
         register(keyCode: UInt32(kVK_ANSI_Backslash),   modifiers: shiftCmd, id: .toggleVisibility)
@@ -196,6 +204,11 @@ final class HotkeyManager {
         register(keyCode: UInt32(kVK_ANSI_T),             modifiers: shiftCmd, id: .jumpSuggestions)
         // ⌘⇧B  — jump to Brief tab
         register(keyCode: UInt32(kVK_ANSI_B),             modifiers: shiftCmd, id: .jumpBrief)
+        // ⌘⌥↑/↓/←/→ — scroll Notes tab.
+        register(keyCode: UInt32(kVK_UpArrow),            modifiers: optionCmd, id: .scrollNotesUp)
+        register(keyCode: UInt32(kVK_DownArrow),          modifiers: optionCmd, id: .scrollNotesDown)
+        register(keyCode: UInt32(kVK_LeftArrow),          modifiers: optionCmd, id: .scrollNotesLeft)
+        register(keyCode: UInt32(kVK_RightArrow),         modifiers: optionCmd, id: .scrollNotesRight)
     }
 
     private func register(keyCode: UInt32, modifiers: UInt32, id: HotkeyID) {
@@ -253,6 +266,14 @@ final class HotkeyManager {
             work = { [weak self] in self?.jumpSuggestions() }
         case .jumpBrief:
             work = { [weak self] in self?.jumpBrief() }
+        case .scrollNotesUp:
+            work = { [weak self] in self?.scrollNotes(.up) }
+        case .scrollNotesDown:
+            work = { [weak self] in self?.scrollNotes(.down) }
+        case .scrollNotesLeft:
+            work = { [weak self] in self?.scrollNotes(.left) }
+        case .scrollNotesRight:
+            work = { [weak self] in self?.scrollNotes(.right) }
         }
 
         if Thread.isMainThread {

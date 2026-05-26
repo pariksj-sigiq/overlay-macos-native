@@ -7,6 +7,7 @@
 
 import Foundation
 import Security
+import CryptoKit
 
 final class KeychainStore {
     enum KeychainStoreError: Error, LocalizedError {
@@ -105,5 +106,125 @@ final class KeychainStore {
             kSecAttrService as String: service,
             kSecAttrAccount as String: account
         ]
+    }
+}
+
+final class LocalDataProtector {
+    enum LocalDataProtectorError: Error {
+        case randomGenerationFailed(OSStatus)
+        case invalidKey
+    }
+
+    static let shared = LocalDataProtector()
+
+    private static let keyAccount = "local-data-encryption-key-v1"
+    private static let stringPrefix = "enc:v1:"
+    private static let dataPrefix = Data(stringPrefix.utf8)
+
+    private let keychain: KeychainStore
+    private var cachedKey: SymmetricKey?
+
+    init(keychain: KeychainStore = .shared) {
+        self.keychain = keychain
+    }
+
+    func isEncryptedString(_ value: String) -> Bool {
+        value.hasPrefix(Self.stringPrefix)
+    }
+
+    func isEncryptedData(_ value: Data) -> Bool {
+        value.starts(with: Self.dataPrefix)
+    }
+
+    func hasStoredKey() -> Bool {
+        guard let value = try? keychain.get(account: Self.keyAccount),
+              let keyData = Data(base64Encoded: value) else {
+            return false
+        }
+        return keyData.count == 32
+    }
+
+    func encryptString(_ value: String) throws -> String {
+        guard !isEncryptedString(value) else { return value }
+        let sealed = try AES.GCM.seal(Data(value.utf8), using: key())
+        guard let combined = sealed.combined else { throw LocalDataProtectorError.invalidKey }
+        return Self.stringPrefix + combined.base64EncodedString()
+    }
+
+    func decryptString(_ value: String) -> String {
+        guard isEncryptedString(value) else { return value }
+        let encoded = String(value.dropFirst(Self.stringPrefix.count))
+        guard let combined = Data(base64Encoded: encoded),
+              let sealed = try? AES.GCM.SealedBox(combined: combined),
+              let opened = try? AES.GCM.open(sealed, using: key()),
+              let text = String(data: opened, encoding: .utf8) else {
+            return ""
+        }
+        return text
+    }
+
+    func encryptString(_ value: String?) throws -> String? {
+        guard let value else { return nil }
+        return try encryptString(value)
+    }
+
+    func decryptString(_ value: String?) -> String? {
+        guard let value else { return nil }
+        return decryptString(value)
+    }
+
+    func encryptData(_ value: Data) throws -> Data {
+        guard !isEncryptedData(value) else { return value }
+        let sealed = try AES.GCM.seal(value, using: key())
+        guard let combined = sealed.combined else { throw LocalDataProtectorError.invalidKey }
+        return Self.dataPrefix + Data(combined.base64EncodedString().utf8)
+    }
+
+    func decryptData(_ value: Data) -> Data {
+        guard isEncryptedData(value) else { return value }
+        let encoded = value.dropFirst(Self.dataPrefix.count)
+        guard let encodedString = String(data: encoded, encoding: .utf8),
+              let combined = Data(base64Encoded: encodedString),
+              let sealed = try? AES.GCM.SealedBox(combined: combined),
+              let opened = try? AES.GCM.open(sealed, using: key()) else {
+            return Data()
+        }
+        return opened
+    }
+
+    func encryptData(_ value: Data?) throws -> Data? {
+        guard let value else { return nil }
+        return try encryptData(value)
+    }
+
+    func decryptData(_ value: Data?) -> Data? {
+        guard let value else { return nil }
+        return decryptData(value)
+    }
+
+    private func key() throws -> SymmetricKey {
+        if let cachedKey {
+            return cachedKey
+        }
+
+        if let existing = try? keychain.get(account: Self.keyAccount),
+           let keyData = Data(base64Encoded: existing),
+           keyData.count == 32 {
+            let key = SymmetricKey(data: keyData)
+            cachedKey = key
+            return key
+        }
+
+        var bytes = [UInt8](repeating: 0, count: 32)
+        let status = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
+        guard status == errSecSuccess else {
+            throw LocalDataProtectorError.randomGenerationFailed(status)
+        }
+
+        let keyData = Data(bytes)
+        try keychain.set(keyData.base64EncodedString(), account: Self.keyAccount)
+        let key = SymmetricKey(data: keyData)
+        cachedKey = key
+        return key
     }
 }

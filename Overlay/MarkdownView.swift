@@ -8,22 +8,37 @@
 //
 
 import SwiftUI
+import AppKit
 
 struct MarkdownView: View {
     let text: String
     let fontSize: CGFloat
+    var scrollCommand: NotesScrollCommand? = nil
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 6) {
-                ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
-                    renderedBlock(block)
-                }
+        MarkdownScrollView(
+            text: text,
+            fontSize: fontSize,
+            scrollCommand: scrollCommand
+        )
+    }
+}
+
+private struct MarkdownRenderedContent: View {
+    let text: String
+    let fontSize: CGFloat
+    let availableWidth: CGFloat
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
+                renderedBlock(block)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .frame(width: max(availableWidth, 1), alignment: .leading)
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     // MARK: - Block parsing
@@ -191,5 +206,111 @@ struct MarkdownView: View {
             return attr
         }
         return AttributedString(s)
+    }
+}
+
+private struct MarkdownScrollView: NSViewRepresentable {
+    let text: String
+    let fontSize: CGFloat
+    let scrollCommand: NotesScrollCommand?
+
+    private static let fallbackWidth: CGFloat = 480
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scrollView = NSScrollView()
+        scrollView.drawsBackground = false
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = true
+        scrollView.autohidesScrollers = true
+        scrollView.borderType = .noBorder
+        scrollView.scrollsDynamically = true
+
+        let hostingView = HardenedHostingView(
+            rootView: MarkdownRenderedContent(
+                text: text,
+                fontSize: fontSize,
+                availableWidth: Self.contentWidth(in: scrollView)
+            )
+        )
+        hostingView.autoresizingMask = [.width]
+        hostingView.wantsLayer = true
+        scrollView.documentView = hostingView
+
+        NotesScrollBridge.register(scrollView)
+        Self.updateDocumentSize(hostingView, in: scrollView, text: text, fontSize: fontSize)
+        PrivacyHardeningController.shared.apply(to: scrollView)
+        DispatchQueue.main.async { [weak scrollView, weak hostingView] in
+            guard let scrollView, let hostingView else { return }
+            Self.updateDocumentSize(hostingView, in: scrollView, text: text, fontSize: fontSize)
+            PrivacyHardeningController.shared.apply(to: scrollView)
+        }
+        return scrollView
+    }
+
+    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        guard let hostingView = scrollView.documentView as? NSHostingView<MarkdownRenderedContent> else {
+            return
+        }
+
+        NotesScrollBridge.register(scrollView)
+        Self.updateDocumentSize(hostingView, in: scrollView, text: text, fontSize: fontSize)
+        PrivacyHardeningController.shared.apply(to: scrollView)
+
+        guard let command = scrollCommand,
+              context.coordinator.lastScrollCommandID != command.id else {
+            return
+        }
+        context.coordinator.lastScrollCommandID = command.id
+        NotesScrollBridge.scroll(scrollView, direction: command.direction)
+    }
+
+    private static func updateDocumentSize(
+        _ hostingView: NSHostingView<MarkdownRenderedContent>,
+        in scrollView: NSScrollView,
+        text: String,
+        fontSize: CGFloat
+    ) {
+        scrollView.layoutSubtreeIfNeeded()
+        let previousOrigin = scrollView.contentView.bounds.origin
+        let visibleSize = scrollView.contentSize
+        let width = contentWidth(in: scrollView)
+
+        hostingView.rootView = MarkdownRenderedContent(
+            text: text,
+            fontSize: fontSize,
+            availableWidth: width
+        )
+        hostingView.frame = NSRect(origin: .zero, size: NSSize(width: width, height: 10))
+        hostingView.layoutSubtreeIfNeeded()
+        let fittingSize = hostingView.fittingSize
+        let height = max(visibleSize.height, ceil(fittingSize.height))
+        hostingView.frame = NSRect(origin: .zero, size: NSSize(width: width, height: height))
+        restoreScrollOrigin(previousOrigin, in: scrollView)
+    }
+
+    private static func contentWidth(in scrollView: NSScrollView) -> CGFloat {
+        let contentWidth = max(scrollView.contentView.bounds.width, scrollView.contentSize.width)
+        return contentWidth > 100 ? contentWidth : fallbackWidth
+    }
+
+    private static func restoreScrollOrigin(_ origin: NSPoint, in scrollView: NSScrollView) {
+        guard let documentView = scrollView.documentView else { return }
+        let clipView = scrollView.contentView
+        let maxX = max(0, documentView.bounds.width - clipView.bounds.width)
+        let maxY = max(0, documentView.bounds.height - clipView.bounds.height)
+        let restoredOrigin = NSPoint(
+            x: min(max(0, origin.x), maxX),
+            y: min(max(0, origin.y), maxY)
+        )
+        clipView.scroll(to: restoredOrigin)
+        scrollView.reflectScrolledClipView(clipView)
+    }
+
+    final class Coordinator {
+        var lastScrollCommandID: UUID?
     }
 }

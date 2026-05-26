@@ -11,7 +11,14 @@
 
 import AppKit
 import Combine
+import Carbon.HIToolbox
+import Darwin
 import SwiftUI
+
+private func handleTerminationSignal(_ signal: Int32) {
+    DisableSecureEventInput()
+    exit(signal)
+}
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -38,6 +45,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Lifecycle
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        installTerminationSignalHandlers()
+
         // We are LSUIElement (no dock icon). Accessory activation policy gives
         // us menu-bar presence while still allowing the overlay window to
         // receive keyboard focus for the embedded TextEditor.
@@ -71,6 +80,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             jumpBrief: { [weak self] in
                 self?.showOverlay()
                 AppCommandStore.shared.selectedTab = .brief
+            },
+            scrollNotes: { direction in
+                AppCommandStore.shared.scrollNotes(direction)
             }
         )
 
@@ -92,6 +104,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        prepareForTermination()
+    }
+
+    private func prepareForTermination() {
+        SecureInputManager.shared.disable()
         overlayWindow?.persistFrame()
         NotesStore.shared.flush()
     }
@@ -118,5 +135,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let window = overlayWindow else { return }
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func installTerminationSignalHandlers() {
+        signal(SIGTERM, handleTerminationSignal)
+        signal(SIGINT, handleTerminationSignal)
     }
 }

@@ -27,7 +27,7 @@ struct SessionExportSnapshot: Codable {
     var audits: [PrivacyAuditRecord]
 }
 
-final class AppDatabase {
+final class AppDatabase: @unchecked Sendable {
     static let shared: AppDatabase = {
         do {
             return try AppDatabase()
@@ -65,11 +65,12 @@ final class AppDatabase {
         configuration.foreignKeysEnabled = true
         dbQueue = try DatabaseQueue(path: url.path, configuration: configuration)
         try Migrations.makeMigrator().migrate(dbQueue)
+        try migrateSensitiveRowsAtRest()
     }
 
     func createOrUpdateSession(_ session: CallSessionRecord) async throws -> CallSessionRecord {
         try await write { db in
-            try session.save(db)
+            try self.encrypted(session).save(db)
             return session
         }
     }
@@ -94,18 +95,19 @@ final class AppDatabase {
             try CallSessionRecord
                 .order(CallSessionRecord.Columns.createdAt.desc)
                 .fetchAll(db)
+                .map(self.decrypted)
         }
     }
 
     func fetchSession(id: String) async throws -> CallSessionRecord? {
         try await read { db in
-            try CallSessionRecord.fetchOne(db, key: id)
+            try CallSessionRecord.fetchOne(db, key: id).map(self.decrypted)
         }
     }
 
     func insertContextDoc(_ doc: ContextDocRecord) async throws -> ContextDocRecord {
         try await write { db in
-            try doc.insert(db)
+            try self.encrypted(doc).insert(db)
             return doc
         }
     }
@@ -116,6 +118,7 @@ final class AppDatabase {
                 .filter(ContextDocRecord.Columns.sessionID == sessionID)
                 .order(ContextDocRecord.Columns.addedAt.asc)
                 .fetchAll(db)
+                .map(self.decrypted)
         }
     }
 
@@ -130,13 +133,13 @@ final class AppDatabase {
                 SET summary = ?
                 WHERE id = ?
                 """,
-                arguments: [summary, id])
+                arguments: [try self.protector.encryptString(summary), id])
         }
     }
 
     func insertTranscriptChunk(_ chunk: TranscriptChunkRecord) async throws -> TranscriptChunkRecord {
         try await write { db in
-            try chunk.insert(db)
+            try self.encrypted(chunk).insert(db)
             return chunk
         }
     }
@@ -147,12 +150,13 @@ final class AppDatabase {
                 .filter(TranscriptChunkRecord.Columns.sessionID == sessionID)
                 .order(TranscriptChunkRecord.Columns.ts.asc)
                 .fetchAll(db)
+                .map(self.decrypted)
         }
     }
 
     func insertSuggestion(_ suggestion: SuggestionRecord) async throws -> SuggestionRecord {
         try await write { db in
-            try suggestion.insert(db)
+            try self.encrypted(suggestion).insert(db)
             return suggestion
         }
     }
@@ -163,19 +167,20 @@ final class AppDatabase {
                 .filter(SuggestionRecord.Columns.sessionID == sessionID)
                 .order(SuggestionRecord.Columns.ts.asc)
                 .fetchAll(db)
+                .map(self.decrypted)
         }
     }
 
     func insertAnalysisEvent(_ event: AnalysisEventRecord) async throws -> AnalysisEventRecord {
         try await write { db in
-            try event.insert(db)
+            try self.encrypted(event).insert(db)
             return event
         }
     }
 
     func insertMemoryItem(_ item: MemoryItemRecord) async throws -> MemoryItemRecord {
         try await write { db in
-            try item.insert(db)
+            try self.encrypted(item).insert(db)
             return item
         }
     }
@@ -186,19 +191,20 @@ final class AppDatabase {
                 .filter(Column("session_id") == sessionID)
                 .order(Column("ts").desc)
                 .fetchAll(db)
+                .map(self.decrypted)
         }
     }
 
     func insertPrivacyAudit(_ audit: PrivacyAuditRecord) async throws -> PrivacyAuditRecord {
         try await write { db in
-            try audit.insert(db)
+            try self.encrypted(audit).insert(db)
             return audit
         }
     }
 
     func insertSessionArtifact(_ artifact: SessionArtifactRecord) async throws -> SessionArtifactRecord {
         try await write { db in
-            try artifact.insert(db)
+            try self.encrypted(artifact).insert(db)
             return artifact
         }
     }
@@ -213,6 +219,7 @@ final class AppDatabase {
             return try request
                 .order(Column("ts").desc)
                 .fetchAll(db)
+                .map(self.decrypted)
         }
     }
 
@@ -247,13 +254,13 @@ final class AppDatabase {
                 .order(Column("ts").asc)
                 .fetchAll(db)
 
-            return SessionExportSnapshot(session: session,
-                                         contextDocs: contextDocs,
-                                         transcript: transcript,
-                                         suggestions: suggestions,
-                                         memory: memory,
-                                         artifacts: artifacts,
-                                         audits: audits)
+            return SessionExportSnapshot(session: self.decrypted(session),
+                                         contextDocs: contextDocs.map(self.decrypted),
+                                         transcript: transcript.map(self.decrypted),
+                                         suggestions: suggestions.map(self.decrypted),
+                                         memory: memory.map(self.decrypted),
+                                         artifacts: artifacts.map(self.decrypted),
+                                         audits: audits.map(self.decrypted))
         }
     }
 
@@ -268,6 +275,7 @@ final class AppDatabase {
             try ProviderConfigRecord
                 .order(ProviderConfigRecord.Columns.createdAt.desc)
                 .fetchAll(db)
+                .map(self.decrypted)
         }
     }
 
@@ -277,7 +285,7 @@ final class AppDatabase {
 
     func saveProviderConfig(_ config: ProviderConfigRecord) async throws -> ProviderConfigRecord {
         try await write { db in
-            try config.save(db)
+            try self.encrypted(config).save(db)
             return config
         }
     }
@@ -295,45 +303,41 @@ final class AppDatabase {
         return try await read { db in
             var results: [SearchHistoryResult] = []
 
-            let transcriptRows = try Row.fetchAll(db,
-                                                  sql: """
-                                                  SELECT
-                                                      tc.id,
-                                                      'transcript' AS kind,
-                                                      tc.session_id,
-                                                      cs.title,
-                                                      snippet(transcript_fts, 0, '[', ']', '...', 12) AS snippet,
-                                                      tc.ts AS created_at
-                                                  FROM transcript_fts
-                                                  JOIN transcript_chunk tc ON tc.rowid = transcript_fts.rowid
-                                                  JOIN call_session cs ON cs.id = tc.session_id
-                                                  WHERE transcript_fts MATCH ?
-                                                  ORDER BY rank
-                                                  LIMIT 25
-                                                  """,
-                                                  arguments: [trimmed])
+            let sessions = try CallSessionRecord.fetchAll(db)
+                .map(self.decrypted)
+            let titlesByID = Dictionary(uniqueKeysWithValues: sessions.map { ($0.id, $0.title) })
 
-            results.append(contentsOf: transcriptRows.compactMap(Self.makeSearchResult(row:)))
+            let transcriptRows = try TranscriptChunkRecord.fetchAll(db)
+                .map(self.decrypted)
+                .filter { $0.text.localizedCaseInsensitiveContains(trimmed) }
+                .prefix(25)
+                .map {
+                    SearchHistoryResult(id: $0.id,
+                                        kind: .transcript,
+                                        sessionID: $0.sessionID,
+                                        title: titlesByID[$0.sessionID] ?? "Session",
+                                        snippet: Self.snippet(for: $0.text, matching: trimmed),
+                                        createdAt: $0.ts / 1000)
+                }
+            results.append(contentsOf: transcriptRows)
 
-            let docRows = try Row.fetchAll(db,
-                                           sql: """
-                                           SELECT
-                                               cd.id,
-                                               'document' AS kind,
-                                               cd.session_id,
-                                               cs.title,
-                                               snippet(doc_fts, 0, '[', ']', '...', 12) AS snippet,
-                                               cd.added_at AS created_at
-                                           FROM doc_fts
-                                           JOIN context_doc cd ON cd.rowid = doc_fts.rowid
-                                           JOIN call_session cs ON cs.id = cd.session_id
-                                           WHERE doc_fts MATCH ?
-                                           ORDER BY rank
-                                           LIMIT 25
-                                           """,
-                                           arguments: [trimmed])
-
-            results.append(contentsOf: docRows.compactMap(Self.makeSearchResult(row:)))
+            let docRows = try ContextDocRecord.fetchAll(db)
+                .map(self.decrypted)
+                .filter { doc in
+                    doc.content.localizedCaseInsensitiveContains(trimmed)
+                        || (doc.summary?.localizedCaseInsensitiveContains(trimmed) ?? false)
+                }
+                .prefix(25)
+                .map {
+                    SearchHistoryResult(id: $0.id,
+                                        kind: .document,
+                                        sessionID: $0.sessionID,
+                                        title: titlesByID[$0.sessionID] ?? "Session",
+                                        snippet: Self.snippet(for: [$0.summary, $0.content].compactMap { $0 }.joined(separator: "\n"),
+                                                              matching: trimmed),
+                                        createdAt: $0.addedAt)
+                }
+            results.append(contentsOf: docRows)
             return results.sorted { $0.createdAt > $1.createdAt }
         }
     }
@@ -344,6 +348,7 @@ final class AppDatabase {
                 .order(CallSessionRecord.Columns.createdAt.desc)
                 .limit(25)
                 .fetchAll(db)
+                .map(self.decrypted)
                 .map {
                     SearchHistoryResult(id: $0.id,
                                         kind: .transcript,
@@ -377,6 +382,157 @@ final class AppDatabase {
                 }
             }
         }
+    }
+
+    private var protector: LocalDataProtector {
+        LocalDataProtector.shared
+    }
+
+    private func migrateSensitiveRowsAtRest() throws {
+        try dbQueue.write { db in
+            for record in try CallSessionRecord.fetchAll(db) { try encrypted(record).update(db) }
+            for record in try ContextDocRecord.fetchAll(db) { try encrypted(record).update(db) }
+            for record in try TranscriptChunkRecord.fetchAll(db) { try encrypted(record).update(db) }
+            for record in try SuggestionRecord.fetchAll(db) { try encrypted(record).update(db) }
+            for record in try ProviderConfigRecord.fetchAll(db) { try encrypted(record).update(db) }
+            for record in try AnalysisEventRecord.fetchAll(db) { try encrypted(record).update(db) }
+            for record in try MemoryItemRecord.fetchAll(db) { try encrypted(record).update(db) }
+            for record in try PrivacyAuditRecord.fetchAll(db) { try encrypted(record).update(db) }
+            for record in try SessionArtifactRecord.fetchAll(db) { try encrypted(record).update(db) }
+        }
+    }
+
+    private func encrypted(_ record: CallSessionRecord) throws -> CallSessionRecord {
+        var copy = record
+        copy.title = try protector.encryptString(copy.title)
+        copy.brief = try protector.encryptString(copy.brief)
+        return copy
+    }
+
+    private func decrypted(_ record: CallSessionRecord) -> CallSessionRecord {
+        var copy = record
+        copy.title = protector.decryptString(copy.title)
+        copy.brief = protector.decryptString(copy.brief)
+        return copy
+    }
+
+    private func encrypted(_ record: ContextDocRecord) throws -> ContextDocRecord {
+        var copy = record
+        copy.filename = try protector.encryptString(copy.filename)
+        copy.content = try protector.encryptString(copy.content)
+        copy.summary = try protector.encryptString(copy.summary)
+        return copy
+    }
+
+    private func decrypted(_ record: ContextDocRecord) -> ContextDocRecord {
+        var copy = record
+        copy.filename = protector.decryptString(copy.filename)
+        copy.content = protector.decryptString(copy.content)
+        copy.summary = protector.decryptString(copy.summary)
+        return copy
+    }
+
+    private func encrypted(_ record: TranscriptChunkRecord) throws -> TranscriptChunkRecord {
+        var copy = record
+        copy.text = try protector.encryptString(copy.text)
+        return copy
+    }
+
+    private func decrypted(_ record: TranscriptChunkRecord) -> TranscriptChunkRecord {
+        var copy = record
+        copy.text = protector.decryptString(copy.text)
+        return copy
+    }
+
+    private func encrypted(_ record: SuggestionRecord) throws -> SuggestionRecord {
+        var copy = record
+        copy.prompt = try protector.encryptString(copy.prompt)
+        copy.content = try protector.encryptString(copy.content)
+        return copy
+    }
+
+    private func decrypted(_ record: SuggestionRecord) -> SuggestionRecord {
+        var copy = record
+        copy.prompt = protector.decryptString(copy.prompt)
+        copy.content = protector.decryptString(copy.content)
+        return copy
+    }
+
+    private func encrypted(_ record: ProviderConfigRecord) throws -> ProviderConfigRecord {
+        var copy = record
+        copy.name = try protector.encryptString(copy.name)
+        copy.configJSON = try protector.encryptData(copy.configJSON)
+        return copy
+    }
+
+    private func decrypted(_ record: ProviderConfigRecord) -> ProviderConfigRecord {
+        var copy = record
+        copy.name = protector.decryptString(copy.name)
+        copy.configJSON = protector.decryptData(copy.configJSON)
+        return copy
+    }
+
+    private func encrypted(_ record: AnalysisEventRecord) throws -> AnalysisEventRecord {
+        var copy = record
+        copy.payloadJSON = try protector.encryptData(copy.payloadJSON)
+        return copy
+    }
+
+    private func encrypted(_ record: MemoryItemRecord) throws -> MemoryItemRecord {
+        var copy = record
+        copy.text = try protector.encryptString(copy.text)
+        copy.payloadJSON = try protector.encryptData(copy.payloadJSON)
+        return copy
+    }
+
+    private func decrypted(_ record: MemoryItemRecord) -> MemoryItemRecord {
+        var copy = record
+        copy.text = protector.decryptString(copy.text)
+        copy.payloadJSON = protector.decryptData(copy.payloadJSON)
+        return copy
+    }
+
+    private func encrypted(_ record: PrivacyAuditRecord) throws -> PrivacyAuditRecord {
+        var copy = record
+        copy.detail = try protector.encryptString(copy.detail)
+        return copy
+    }
+
+    private func decrypted(_ record: PrivacyAuditRecord) -> PrivacyAuditRecord {
+        var copy = record
+        copy.detail = protector.decryptString(copy.detail)
+        return copy
+    }
+
+    private func encrypted(_ record: SessionArtifactRecord) throws -> SessionArtifactRecord {
+        var copy = record
+        copy.title = try protector.encryptString(copy.title)
+        copy.content = try protector.encryptString(copy.content)
+        copy.payloadJSON = try protector.encryptData(copy.payloadJSON)
+        return copy
+    }
+
+    private func decrypted(_ record: SessionArtifactRecord) -> SessionArtifactRecord {
+        var copy = record
+        copy.title = protector.decryptString(copy.title)
+        copy.content = protector.decryptString(copy.content)
+        copy.payloadJSON = protector.decryptData(copy.payloadJSON)
+        return copy
+    }
+
+    private static func snippet(for text: String, matching query: String) -> String {
+        let normalizedText = text as NSString
+        let range = normalizedText.range(of: query, options: [.caseInsensitive, .diacriticInsensitive])
+        guard range.location != NSNotFound else {
+            return String(text.prefix(180))
+        }
+
+        let start = max(0, range.location - 70)
+        let end = min(normalizedText.length, range.location + range.length + 90)
+        let snippet = normalizedText.substring(with: NSRange(location: start, length: end - start))
+        let prefix = start > 0 ? "..." : ""
+        let suffix = end < normalizedText.length ? "..." : ""
+        return prefix + snippet + suffix
     }
 
     private static func makeSearchResult(row: Row) -> SearchHistoryResult? {

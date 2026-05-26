@@ -17,6 +17,7 @@
 import AppKit
 import SwiftUI
 import Combine
+import Carbon.HIToolbox
 
 final class OverlayWindow: NSWindow {
 
@@ -92,6 +93,18 @@ final class OverlayWindow: NSWindow {
             name: NSWindow.didResizeNotification,
             object: self
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handlePrivacyStateChange),
+            name: NSApplication.didBecomeActiveNotification,
+            object: NSApp
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handlePrivacyStateChange),
+            name: NSApplication.didResignActiveNotification,
+            object: NSApp
+        )
 
         // Apply + observe focus mode.
         focusModeCancellable = FocusModeStore.shared.$mode
@@ -99,9 +112,15 @@ final class OverlayWindow: NSWindow {
             .sink { [weak self] mode in
                 self?.applyFocusMode(mode)
             }
+
+        applyPrivacyHardening()
+        updateSecureInputState()
     }
 
     deinit {
+        DispatchQueue.main.async { @MainActor in
+            SecureInputManager.shared.disable()
+        }
         NotificationCenter.default.removeObserver(self)
     }
 
@@ -133,7 +152,57 @@ final class OverlayWindow: NSWindow {
             NSApp.activate(ignoringOtherApps: true)
             makeKey()
         }
+        if event.type == .keyDown, handleNotesScrollShortcut(event) {
+            return
+        }
         super.sendEvent(event)
+    }
+
+    override func becomeKey() {
+        super.becomeKey()
+        applyPrivacyHardening()
+        updateSecureInputState()
+    }
+
+    override func resignKey() {
+        super.resignKey()
+        updateSecureInputState()
+    }
+
+    override func makeKeyAndOrderFront(_ sender: Any?) {
+        super.makeKeyAndOrderFront(sender)
+        applyPrivacyHardening()
+        updateSecureInputState()
+    }
+
+    override func orderOut(_ sender: Any?) {
+        SecureInputManager.shared.disable()
+        super.orderOut(sender)
+    }
+
+    override func close() {
+        SecureInputManager.shared.disable()
+        super.close()
+    }
+
+    private func handleNotesScrollShortcut(_ event: NSEvent) -> Bool {
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        guard flags.contains(.command), flags.contains(.option) else { return false }
+        guard !flags.contains(.control), !flags.contains(.shift) else { return false }
+
+        switch Int(event.keyCode) {
+        case kVK_UpArrow:
+            AppCommandStore.shared.scrollNotes(.up)
+        case kVK_DownArrow:
+            AppCommandStore.shared.scrollNotes(.down)
+        case kVK_LeftArrow:
+            AppCommandStore.shared.scrollNotes(.left)
+        case kVK_RightArrow:
+            AppCommandStore.shared.scrollNotes(.right)
+        default:
+            return false
+        }
+        return true
     }
 
     // MARK: - Focus mode
@@ -157,6 +226,7 @@ final class OverlayWindow: NSWindow {
             self.isMovableByWindowBackground = true
             if isKeyWindow { resignKey() }
         }
+        updateSecureInputState()
     }
 
     // MARK: - Hosting
@@ -166,7 +236,7 @@ final class OverlayWindow: NSWindow {
             .environmentObject(NotesStore.shared)
             .environmentObject(PinState.shared)
 
-        let hosting = NSHostingView(rootView: root)
+        let hosting = HardenedHostingView(rootView: root)
         hosting.translatesAutoresizingMaskIntoConstraints = false
 
         // A container view lets the visual-effect background sit underneath
@@ -187,6 +257,25 @@ final class OverlayWindow: NSWindow {
         ])
 
         self.contentView = container
+        applyPrivacyHardening()
+    }
+
+    private func applyPrivacyHardening() {
+        PrivacyHardeningController.shared.apply(to: self)
+    }
+
+    func refreshPrivacyHardeningState() {
+        applyPrivacyHardening()
+        updateSecureInputState()
+    }
+
+    @objc private func handlePrivacyStateChange() {
+        refreshPrivacyHardeningState()
+    }
+
+    private func updateSecureInputState() {
+        let shouldEnable = isVisible && isKeyWindow && NSApp.isActive && currentFocusMode == .interactive
+        SecureInputManager.shared.setEnabled(shouldEnable)
     }
 
     // MARK: - Public control
@@ -243,5 +332,95 @@ final class OverlayWindow: NSWindow {
             y: screen.midY - size.height / 2
         )
         return NSRect(origin: origin, size: size)
+    }
+}
+
+@MainActor
+final class PrivacyHardeningController {
+    static let shared = PrivacyHardeningController()
+
+    private init() {}
+
+    func apply(to window: NSWindow) {
+        window.setAccessibilityElement(false)
+        window.setAccessibilityHidden(true)
+        window.setAccessibilityLabel("")
+        window.setAccessibilityValue(nil)
+        window.setAccessibilityHelp("")
+        window.setAccessibilityChildren([])
+
+        if let contentView = window.contentView {
+            apply(to: contentView)
+        }
+    }
+
+    func apply(to view: NSView) {
+        view.setAccessibilityElement(false)
+        view.setAccessibilityHidden(true)
+        view.setAccessibilityLabel("")
+        view.setAccessibilityValue(nil)
+        view.setAccessibilityHelp("")
+        view.setAccessibilityChildren([])
+        view.subviews.forEach { apply(to: $0) }
+    }
+}
+
+@MainActor
+final class SecureInputManager {
+    static let shared = SecureInputManager()
+
+    private var enabledByOverlay = false
+
+    private init() {}
+
+    func setEnabled(_ enabled: Bool) {
+        enabled ? enable() : disable()
+    }
+
+    func enable() {
+        guard !enabledByOverlay else { return }
+        EnableSecureEventInput()
+        enabledByOverlay = true
+    }
+
+    func disable() {
+        guard enabledByOverlay else { return }
+        DisableSecureEventInput()
+        enabledByOverlay = false
+    }
+}
+
+@MainActor
+final class HardenedHostingView<Content: View>: NSHostingView<Content> {
+    required init(rootView: Content) {
+        super.init(rootView: rootView)
+        PrivacyHardeningController.shared.apply(to: self)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        PrivacyHardeningController.shared.apply(to: self)
+    }
+
+    override func layout() {
+        super.layout()
+        PrivacyHardeningController.shared.apply(to: self)
+    }
+
+    override func accessibilityChildren() -> [Any]? {
+        []
+    }
+
+    override func accessibilityLabel() -> String? {
+        ""
+    }
+
+    override func accessibilityValue() -> Any? {
+        nil
     }
 }
